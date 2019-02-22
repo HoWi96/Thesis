@@ -102,6 +102,7 @@ def amountBreakevenSanctions():
 if __name__ == "__main__":
     validationModel()
     amountBreakevenSanctions()
+    print("Hello World.")
 
 
 
