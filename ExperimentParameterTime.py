@@ -10,6 +10,7 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 import scipy.special
+from mpl_toolkits.mplot3d import axes3d
 
 # In[] PREPROCESS DATA
 def preprocessData(dataPath="DataJune2017.csv"):
@@ -26,35 +27,12 @@ def preprocessData(dataPath="DataJune2017.csv"):
     return data
 
 # In[] PROCESS DATA
-def processData(percentile, volume):
-    pass
-    
-    
-# In[] MAIN
-if __name__ == "__main__":
-    
-    #########################
-    #ExperimentParameterTime#
-    #########################
+def experimentParameterTime(uncertainty = 0.2):
     data = preprocessData(dataPath="DataJune2017.csv")["AGG2017"]
     hours = int(data.shape[0]/4)
     totalEnergy = sum(data)/4
-    uncertainty = 0.2 # 20% uncertainty
-    #month
-    monthEnergy = data.quantile(uncertainty)*hours 
-    #hour
-    i = 0
-    #fig, ax = plt.subplots()
-    hourEnergy = 0
-    for n in range(hours):
-        hourEnergy += data[n*4:(n+1)*4].quantile(uncertainty)
-        #ax.scatter(n,data[n:n+4].quantile(uncertainty))# 20% uncertainty
-    #plt.show()
-    print(monthEnergy/totalEnergy) # highly sensitive to delivered certainty
-    print(hourEnergy/totalEnergy) #far less sensitive for expected certainty
-    
-    #1h,2h,3h, 4h,8h,24h,72h,120h
-    
+
+    #15min,30min,1h,2h,3h, 4h,8h,24h,72h,120h 
     periods = [.25,.5,1,2,3,4,5,8,12,16,24,72,120,720] #divisors of 720 
     varEnergy = np.zeros(len(periods))
     for i in range(len(periods)):
@@ -71,20 +49,18 @@ if __name__ == "__main__":
     ax.set_ylim(0,120)
     plt.show()
     
-    ################################
-    #ExperimentParameterUncertainty#
-    ################################
+    
+def experimentParameterUncertainty(period = 4):
     data = preprocessData(dataPath="DataJune2017.csv")["AGG2017"]
     hours = int(data.shape[0]/4)
     totalEnergy = sum(data)/4
     
     uncertainty = np.linspace(0,1,20)
-    p = 4 #period of 4 hours
     varEnergy = np.zeros(len(uncertainty))
     for i in range(len(uncertainty)):
-        for n in range(int(hours/p)):
+        for n in range(int(hours/period)):
             # total energy = certain energy/period*periods*duration/period
-             varEnergy[i] += data[int(n*4*p):int((n+1)*4*p)].quantile(uncertainty[i])*p
+             varEnergy[i] += data[int(n*4*period):int((n+1)*4*period)].quantile(uncertainty[i])*period
             
     fig, ax = plt.subplots()
     plt.plot(uncertainty*100,varEnergy/totalEnergy*100)
@@ -93,6 +69,21 @@ if __name__ == "__main__":
     plt.title('Effect of uncertainty \n on produced energy for a duration of 4h.')
     ax.set_ylim(0,120)
     plt.show()
+    
+# In[] MAIN
+if __name__ == "__main__":
+    fig = plt.figure()
+    ax = fig.add_subplot(111, projection='3d')
+    
+    # Grab some test data.
+    X, Y, Z = axes3d.get_test_data(0.05)
+    
+    # Plot a basic wireframe.
+    ax.plot_wireframe(X, Y, Z, rstride=10, cstride=10)
+    
+    plt.show()
+
+    
     
     
     
