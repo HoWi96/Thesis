@@ -10,7 +10,7 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 import scipy.special
-from mpl_toolkits.mplot3d import axes3d
+from mpl_toolkits import mplot3d #https://medium.com/@sebastiannorena/3d-plotting-in-python-b0dc1c2e5e38
 
 # In[] PREPROCESS DATA
 def preprocessData(dataPath="DataJune2017.csv"):
@@ -42,10 +42,11 @@ def experimentParameterTime(uncertainty = 0.2):
              varEnergy[i] += data[int(n*4*p):int((n+1)*4*p)].quantile(uncertainty)*p
             
     fig, ax = plt.subplots()
-    plt.plot(periods,varEnergy/totalEnergy*100)
+    plt.plot(periods,varEnergy/totalEnergy*100,label = uncertainty*100)
+    plt.legend()
     plt.ylabel('Ratio of total produced energy [%]')
     plt.xlabel('Duration of the delivery period [h]')
-    plt.title('Effect of delivery period duration \n on produced energy for an uncertainty of 20%.')
+    plt.title('Effect of delivery period duration \n on produced energy for an uncertainty as indicated by legend.')
     ax.set_ylim(0,120)
     plt.show()
     
@@ -63,25 +64,35 @@ def experimentParameterUncertainty(period = 4):
              varEnergy[i] += data[int(n*4*period):int((n+1)*4*period)].quantile(uncertainty[i])*period
             
     fig, ax = plt.subplots()
-    plt.plot(uncertainty*100,varEnergy/totalEnergy*100)
+    plt.plot(uncertainty*100,varEnergy/totalEnergy*100,label = period)
+    plt.legend()
     plt.ylabel('Ratio of total produced energy [%]')
     plt.xlabel('Uncertainty [%]')
-    plt.title('Effect of uncertainty \n on produced energy for a duration of 4h.')
+    plt.title('Effect of uncertainty on produced energy \n for a duration of hours indicated by legend')
     ax.set_ylim(0,120)
     plt.show()
     
 # In[] MAIN
 if __name__ == "__main__":
-    fig = plt.figure()
-    ax = fig.add_subplot(111, projection='3d')
+#    plt.close('all')
+#    experimentParameterUncertainty(1)
+#    experimentParameterUncertainty(4)
+#    experimentParameterUncertainty(720)
+#    experimentParameterTime(uncertainty = 0.01)
+#    experimentParameterTime(uncertainty = 0.2)
+#    experimentParameterTime(uncertainty = 0.4)
     
-    # Grab some test data.
-    X, Y, Z = axes3d.get_test_data(0.05)
     
-    # Plot a basic wireframe.
-    ax.plot_wireframe(X, Y, Z, rstride=10, cstride=10)
-    
-    plt.show()
+#    fig = plt.figure()
+#    ax = fig.add_subplot(111, projection='3d')
+#    
+#    # Grab some test data.
+#    X, Y, Z = axes3d.get_test_data(0.05)
+#    
+#    # Plot a basic wireframe.
+#    ax.plot_wireframe(X, Y, Z, rstride=10, cstride=10)
+#    
+#    plt.show()
 
     
     
