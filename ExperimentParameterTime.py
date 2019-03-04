@@ -13,7 +13,7 @@ import scipy.special
 from mpl_toolkits import mplot3d #https://medium.com/@sebastiannorena/3d-plotting-in-python-b0dc1c2e5e38
 
 # In[] PREPROCESS DATA
-def preprocessData(dataPath="DataJune2017.csv"):
+def preprocessData(dataPath="Data/DataJune2017.csv"):
     data = pd.read_csv(dataPath)
 
     SunMonitored = 2952.78
@@ -28,7 +28,7 @@ def preprocessData(dataPath="DataJune2017.csv"):
 
 # In[] PROCESS DATA
 def experimentParameterTime(uncertainty = 0.2):
-    data = preprocessData(dataPath="DataJune2017.csv")["AGG2017"]
+    data = preprocessData(dataPath="Data/DataJune2017.csv")["AGG2017"]
     hours = int(data.shape[0]/4)
     totalEnergy = sum(data)/4
 
@@ -52,7 +52,7 @@ def experimentParameterTime(uncertainty = 0.2):
     
     
 def experimentParameterUncertainty(period = 4):
-    data = preprocessData(dataPath="DataJune2017.csv")["AGG2017"]
+    data = preprocessData(dataPath="Data/DataJune2017.csv")["AGG2017"]
     hours = int(data.shape[0]/4)
     totalEnergy = sum(data)/4
     
@@ -96,7 +96,7 @@ if __name__ == "__main__":
     
     #Process Data
     def processEnergyRatio(uncertainty,periods):
-        data = preprocessData(dataPath="DataJune2017.csv")["AGG2017"]
+        data = preprocessData(dataPath="Data/DataJune2017.csv")["AGG2017"]
         hours = int(data.shape[0]/4)
         totalEnergy = sum(data)/4
         varEnergy = np.zeros((len(uncertainty),len(periods),))
@@ -116,7 +116,7 @@ if __name__ == "__main__":
     #3D Surface Plot
     fig = plt.figure()
     ax = plt.axes(projection='3d')
-    ax.plot_surface(X, Y*100, Z, rstride=1, cstride=1,cmap='coolwarm',edgecolor='none')
+    ax.plot_surface(X, Y*100, Z, rstride=1, cstride=1,cmap='plasma',edgecolor='none')
     ax.set_title('Ratio of Offered Energy to Total Available Energy')
     ax.set_ylabel('Uncertainty [%]')
     ax.set_xlabel('Delivery Period [h]')

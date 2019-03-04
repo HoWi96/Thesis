@@ -18,7 +18,7 @@ CAPACITY_REMUNERATION_PRICE = 6 #EUR/MW/h
 EPEX_SPOT_PRICE = 70 #EUR/MW
 
 # In[] PREPROCESS DATA
-def preprocessData(dataPath="DataJune2017.csv"):
+def preprocessData(dataPath="Data/DataJune2017.csv"):
     data = pd.read_csv(dataPath)
 
     SunMonitored = 2952.78
@@ -50,7 +50,7 @@ def processData(percentile, volume):
 
 # In[] VALIDATION MODEL
 def validationModel():
-    dataPath = "DataJune2017.csv"
+    dataPath = "Data/DataJune2017.csv"
     data = preprocessData(dataPath)
 
     percentile = np.linspace(0,1,10)
@@ -75,7 +75,7 @@ def amountBreakevenSanctions():
     For breakeven, the total amount of sanctions need to be equal to the total capacity remuneration.
     WORST CASE SCENARIO
     """
-    dataPath = "DataJune2017.csv"
+    dataPath = "Data/DataJune2017.csv"
     data = preprocessData(dataPath)
 
     percentile = np.linspace(0,1,10)
