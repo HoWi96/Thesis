@@ -10,14 +10,14 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 import scipy.special
-from mpl_toolkits import mplot3d #https://medium.com/@sebastiannorena/3d-plotting-in-python-b0dc1c2e5e38
+from mpl_toolkits import mplot3d 
 
 # In[] PREPROCESS DATA
 def preprocessData(dataPath="Data/DataJune2017.csv"):
     data = pd.read_csv(dataPath)
 
     SunMonitored = 2952.78
-    WindMonitored = 2424.07
+    WindMonitored = 2403.17
     SunInstalled = 30
     WindInstalled = 100
 
