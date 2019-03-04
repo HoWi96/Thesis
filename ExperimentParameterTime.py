@@ -74,30 +74,11 @@ def experimentParameterUncertainty(period = 4):
     
 # In[] MAIN
 if __name__ == "__main__":
-#    plt.close('all')
-#    experimentParameterUncertainty(1)
-#    experimentParameterUncertainty(4)
-#    experimentParameterUncertainty(720)
-#    experimentParameterTime(uncertainty = 0.01)
-#    experimentParameterTime(uncertainty = 0.2)
-#    experimentParameterTime(uncertainty = 0.4)
+    plt.close('all')
+    experimentParameterUncertainty(1)
+    experimentParameterUncertainty(4)
+    experimentParameterUncertainty(720)
+    experimentParameterTime(uncertainty = 0.01)
+    experimentParameterTime(uncertainty = 0.2)
+    experimentParameterTime(uncertainty = 0.4)
     
-    
-#    fig = plt.figure()
-#    ax = fig.add_subplot(111, projection='3d')
-#    
-#    # Grab some test data.
-#    X, Y, Z = axes3d.get_test_data(0.05)
-#    
-#    # Plot a basic wireframe.
-#    ax.plot_wireframe(X, Y, Z, rstride=10, cstride=10)
-#    
-#    plt.show()
-
-    
-    
-    
-    
-    
-
-
