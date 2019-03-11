@@ -54,7 +54,9 @@ plot2 = data.plot(kind='hist',bins = 200, density=True, color='lightblue',ax = a
 #data.plot(kind='hist', , bins=500, density=True, color='lightblue')
 
 #Plot Kernel Density Estimation
-plot3 = data.dropna().plot(kind='kde', style='r--', ax = ax)
+#plot3 = data.dropna().plot(kind='kde', style='r--', ax = ax)
+plot3 = data.plot(kind='kde', style='r--', ax = ax)
+
 
 # non-parametric pdf
 nparam_density = stats.kde.gaussian_kde(data.values.ravel())
