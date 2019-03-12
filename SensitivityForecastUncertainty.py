@@ -39,13 +39,40 @@ sdata3h = (solarData["3h-ahead"]-solarData["RealTime"])/SOLARINSTALLEDD*100
 sdata24h = (solarData["24h-ahead"]-solarData["RealTime"])/SOLARINSTALLEDD*100
 sdata168h = (solarData["168h-ahead"]-solarData["RealTime"])/SOLARINSTALLEDD*100
 
+title1 = "Forecast Error Wind GCT 5h"
+title2 = "Forecast Error Wind GCT 24h"
+title3 = "Forecast Error Wind GCT 168h"
+title4 = "Forecast Error Solar GCT 3h"
+title5 = "Forecast Error Solar GCT 24h"
+title6 = "Forecast Error Solar GCT 168h"
+
 fig, axes = plt.subplots(2, 3)
-wdata5h.plot(kind='hist',bins = 20, color='lightblue', ax = axes[0,0], xlim = (-40,40),  title = "Forecast Error Wind GCT 5h")
-wdata24h.plot(kind='hist',bins = 20, color='lightblue', ax = axes[0,1], xlim = (-40,40),  title = "Forecast Error Wind GCT 24h")
-wdata168h.plot(kind='hist',bins = 20, color='lightblue', ax = axes[0,2], xlim = (-40,40), title = "Forecast Error Wind GCT 168h")
-sdata3h.plot(kind='hist',bins = 20, color='lightblue', ax = axes[1,0],xlim = (-40,40),  title = "Forecast Error Solar GCT 3h")
-sdata24h.plot(kind='hist',bins = 20, color='lightblue', ax = axes[1,1],xlim = (-40,40),  title = "Forecast Error Solar GCT 24h")
-sdata168h.plot(kind='hist',bins = 20, color='lightblue', ax = axes[1,2],xlim = (-40,40),  title = "Forecast Error Solar GCT 168h")
+wdata5h.plot(kind='hist',bins = 20, color='lightblue', ax = axes[0,0], xlim = (-40,40),  title = title1)
+wdata24h.plot(kind='hist',bins = 20, color='lightblue', ax = axes[0,1], xlim = (-40,40),  title = title2)
+wdata168h.plot(kind='hist',bins = 20, color='lightblue', ax = axes[0,2], xlim = (-40,40), title = title3)
+sdata3h.plot(kind='hist',bins = 20, color='lightblue', ax = axes[1,0],xlim = (-40,40),  title = title4)
+sdata24h.plot(kind='hist',bins = 20, color='lightblue', ax = axes[1,1],xlim = (-40,40),  title = title5)
+sdata168h.plot(kind='hist',bins = 20, color='lightblue', ax = axes[1,2],xlim = (-40,40),  title = title6)
+
+x = np.linspace(0,1,50)
+fig,axes = plt.subplots(2,3)
+axes[0,0].plot(x,wdata5h.quantile(x)+100)
+axes[0,1].plot(x,wdata24h.quantile(x)+100)
+axes[0,2].plot(x,wdata168h.quantile(x)+100)
+axes[1,0].plot(x,sdata3h.quantile(x)+100)
+axes[1,1].plot(x,sdata24h.quantile(x)+100)
+axes[1,2].plot(x,sdata168h.quantile(x)+100)
+
+axes[0,0].set_title(title1)
+axes[0,1].set_title(title2)
+axes[0,2].set_title(title3)
+axes[1,0].set_title(title4)
+axes[1,1].set_title(title5)
+axes[1,2].set_title(title6)
+
+for i,j in ([0,0],[0,1],[0,2],[1,0],[1,1],[1,2]):
+    axes[i,j].set_ylabel("$\Delta$P [%MW]")
+    axes[i,j].set_xlabel("Uncertainty [%]")
 
 
 
