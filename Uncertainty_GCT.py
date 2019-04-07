@@ -73,6 +73,21 @@ axes[1,2].set_title(title6)
 for i,j in ([0,0],[0,1],[0,2],[1,0],[1,1],[1,2]):
     axes[i,j].set_ylabel("$\Delta$P [%MW]")
     axes[i,j].set_xlabel("Uncertainty [%]")
+    
+## Descriptive Statistics
+dataError24h = np.vstack((wdata24h,sdata24h))
+#print(np.mean(wdata24h), "% overestimation wind")
+#print(np.mean(sdata24h), "% overestimation solar")
+#print(np.std(wdata24h), "% standard deviation wind")
+#print(np.std(sdata24h), "% stadard deviation solar")
+print(np.mean(dataError24h,1)," % overestimation wind + % overestimation solar")
+print(np.cov(dataError24h),"covariance matrix wind (Row1) and solar (Row2)")
+print(np.corrcoef(dataError24h),"correlation matrix wind (Row1) and solar (Row2)")
+fig,ax = plt.subplots()
+ax.plot(sdata24h,wdata24h,'o',color="black")
+ax.set_xlabel("Solar Data Overestimation 24h [%]")
+ax.set_ylabel("Wind Data Overestimation 24h [%]")
+ax.set_title("Simultaneous Error 24h")
 
 
 
