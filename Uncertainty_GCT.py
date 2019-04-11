@@ -51,12 +51,12 @@ axes[2,0].hist(ddata3h, bins = 20)
 axes[2,1].hist(ddata24h, bins = 20)
 axes[2,2].hist(ddata168h, bins = 20)
 
-titles = ["Forecast Error Wind GCT 5h", "Forecast Error Wind GCT 24h", "Forecast Error Wind GCT 168h", 
-          "Forecast Error Solar GCT 3h", "Forecast Error Solar GCT 24h", "Forecast Error Solar GCT 168h",
-          "Forecast Error Demand GCT 3h", "Forecast Error Demand GCT 24h", "Forecast Error Demand GCT 168h"]
+titles = [["Forecast Error Wind GCT 5h", "Forecast Error Wind GCT 24h", "Forecast Error Wind GCT 168h"], 
+          ["Forecast Error Solar GCT 3h", "Forecast Error Solar GCT 24h", "Forecast Error Solar GCT 168h"],
+          ["Forecast Error Demand GCT 3h", "Forecast Error Demand GCT 24h", "Forecast Error Demand GCT 168h"]]
 
 for i,j in ([0,0],[0,1],[0,2],[1,0],[1,1],[1,2],[2,0],[2,1],[2,2]):
-    axes[i,j].set_title(titles[i+j])
+    axes[i,j].set_title(titles[i][j])
     axes[i,j].set_xlim = (-40,40)
     
 # QUANTILE PLOTS Wind, Solar, Demand
@@ -75,22 +75,26 @@ axes[2,2].plot(x,ddata168h.quantile(x)+100)
 for i,j in ([0,0],[0,1],[0,2],[1,0],[1,1],[1,2],[2,0],[2,1],[2,2]):
     axes[i,j].set_ylabel("$\Delta$P [%MW]")
     axes[i,j].set_xlabel("Uncertainty [%]")
-    axes[i,j].set_title(titles[i+j])
+    axes[i,j].set_title(titles[i][j])
 
 #SCATTER PLOTS
 #plot wind vs solar
-fig,axes = plt.subplots(3)
-axes[0].plot(sdata24h,wdata24h,'o',color="black")
-axes[0].set_xlabel("Solar Data Overestimation 24h [%]")
-axes[0].set_ylabel("Wind Data Overestimation 24h [%]")
+fig,ax = plt.subplots()
+ax.plot(sdata24h,wdata24h,'o',color="black")
+ax.set_xlabel("Solar Data Overestimation 24h [%]")
+ax.set_ylabel("Wind Data Overestimation 24h [%]")
+fig.suptitle("Simultaneous Error 24h")
 #plot demand vs solar
-axes[1].plot(sdata24h,ddata24h,'o',color="black")
-axes[1].set_xlabel("Solar Data Overestimation 24h [%]")
-axes[1].set_ylabel("Demand Data Overestimation 24h [%]")
+fig,ax = plt.subplots()
+ax.plot(sdata24h,ddata24h,'o',color="black")
+ax.set_xlabel("Solar Data Overestimation 24h [%]")
+ax.set_ylabel("Demand Data Overestimation 24h [%]")
+fig.suptitle("Simultaneous Error 24h")
 #plot demand vs wind
-axes[2].plot(wdata24h,ddata24h,'o',color="black")
-axes[2].set_xlabel("Wind Data Overestimation 24h [%]")
-axes[2].set_ylabel("Demand Data Overestimation 24h [%]")
+fig,ax = plt.subplots()
+ax.plot(wdata24h,ddata24h,'o',color="black")
+ax.set_xlabel("Wind Data Overestimation 24h [%]")
+ax.set_ylabel("Demand Data Overestimation 24h [%]")
 fig.suptitle("Simultaneous Error 24h")
 
 # In[] DESCRIPTIVE STATISTICS
