@@ -3,7 +3,14 @@
 Created on Wed Apr 17 11:04:57 2019
 
 @author: user
+@summary: 
+    1. Exploration imbalance data
+    2. System Cost of Imbalance
+    3. Player Cost of Imbalance
+    4. Contribution of Forecast Uncertainty to Imbalance
 """
+
+
 
 # In[] IMPORTS
 import pandas as pd
@@ -25,7 +32,7 @@ NEG = imbalance["NEG"]
 #and can be regarded as the net SI
 ACE = SI + NRV
 
-#%% DATA EXPLORATION
+#%% EXPLORATION IMBALANCE DATA
 plt.close("all")
 
 #The system cost
@@ -51,7 +58,7 @@ plt.plot(ACE, label = 'ACE/net SI')
 plt.legend()
 plt.title("Imbalance")
 
-#%% SYSTEM COST
+#%% SYSTEM COST OF IMBALANCE
 
 # Cost [€] = SI [MW] * MP [€/MW] recalculated to 15min
 systemCostSI = np.abs(SI)*np.where(SI>0,-MDP,MIP)/4
@@ -71,20 +78,14 @@ plt.plot(systemCostACE,label = 'ACE')
 plt.title("System Cost")
 plt.legend()
 
-#%% PLAYER COST
+#%% PLAYER COST OF IMBALANCE
 
-#ALPHA can be neglected, in some cases 70% total cost
-#ALPHA is an incentive, not a real cost
-MAX = np.maximum(imbalance["POS"],imbalance["NEG"])
-ALPHA_rel = ALPHA/MAX[MAX>8]*100
-plt.figure()
-plt.plot(ALPHA_rel)
-
+#ALPHA is an incentive to the players, not a system cost
 playerCostALPHA = np.abs(NRV)*ALPHA/4
 print("The monthly ALPHA player cost is: {0:1.3e}".format(np.sum(playerCostALPHA)),"€" )
 print("This is {0:2.2f}".format(np.sum(playerCostALPHA)/np.sum(systemCostNRV)*100),"% of NRV system cost, which is non-negligible")
 
-#%% CONTRIBUTION UNCERTAINTY
+#%% CONTRIBUTION OF FORECAST UNCERTAINTY TO IMBALANCE
 
 solar = pd.read_csv("Data/SolarForecastJune2017.csv")
 wind = pd.read_csv("Data/WindForecastJune2017.csv")
@@ -106,7 +107,7 @@ plt.title("Scatter Plot")
 
 plt.figure()
 plt.plot(solarErr+windErr-demandErr,SI,'o')
-plt.xlabel("Solar Error + Wind Error - Demand Error")
+plt.xlabel("Total Forecast Error = Solar Error + Wind Error - Demand Error")
 plt.ylabel("System Imbalance")
 plt.title("Scatter Plot")
 
@@ -116,6 +117,14 @@ dataError24h = np.vstack((solarErr+windErr-demandErr,SI))
 print("\n MEAN \n % overestimation wind + % overestimation solar + % overestimation demand \n", np.mean(dataError24h,1))
 print("\n COVARIANCE MATRIX \n |Forecast Uncertainty         |System Imbalance  \n", np.cov(dataError24h))
 print("\n CORRELATION MATRIX \n |Forecast Uncertainty         |System Imbalance  \n", np.corrcoef(dataError24h))
+
+"""
+A 55% correlation is less than expected. Possible reasons:
+    1. Adaption outside demand, wind and solar
+    2. Outage Supply
+    3. Losses Transmission System
+    3. International Import and Export
+"""
 
 # Solar vs Wind vs Demand
 solarErrTot = np.sum(np.abs(solarErr))
