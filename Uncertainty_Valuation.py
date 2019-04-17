@@ -66,9 +66,9 @@ systemCostNRV = np.abs(NRV)*np.where(SI>0,-MDP,MIP)/4
 systemCostACE = np.abs(ACE)*np.where(SI>0,-MDP,MIP)/4
 
 #The montly cost of SI in €
-print("The monthly SI system cost is: {0:1.3e}".format(np.sum(systemCostSI)),"€" )
-print("The monthly NRV system cost is: {0:1.3e}".format(np.sum(systemCostNRV)),"€" )
-print("The monthly ACE system cost is: {0:1.3e}".format(np.sum(systemCostACE)),"€" )
+print("The monthly SI system cost is: {0:1.2e}".format(np.sum(systemCostSI)),"€" )
+print("The monthly NRV system cost is: {0:1.2e}".format(np.sum(systemCostNRV)),"€" )
+print("The monthly ACE system cost is: {0:1.2e}".format(np.sum(systemCostACE)),"€" )
 
 #The QH Cost of SI in €
 plt.figure()
@@ -82,7 +82,7 @@ plt.legend()
 
 #ALPHA is an incentive to the players, not a system cost
 playerCostALPHA = np.abs(NRV)*ALPHA/4
-print("The monthly ALPHA player cost is: {0:1.3e}".format(np.sum(playerCostALPHA)),"€" )
+print("The monthly ALPHA player cost is: {0:1.2e}".format(np.sum(playerCostALPHA)),"€" )
 print("This is {0:2.2f}".format(np.sum(playerCostALPHA)/np.sum(systemCostNRV)*100),"% of NRV system cost, which is non-negligible")
 
 #%% CONTRIBUTION OF FORECAST UNCERTAINTY TO IMBALANCE
@@ -92,8 +92,10 @@ wind = pd.read_csv("Data/WindForecastJune2017.csv")
 demand = pd.read_csv("Data/LoadForecastJune2017.csv")
 
 #error is always an overestimation
+#ERROR = SUPPLY - EXPECTED SUPPLY
 solarErr = solar["RealTime"]-solar["24h-ahead"]
 windErr = wind["RealTime"]-wind["24h-ahead"]
+#ERROR = DEMAND - EXPECTED DEMAND
 demandErr = demand["RealTime"]-demand["24h-ahead"]
 
 #Exploration data
@@ -127,14 +129,32 @@ A 55% correlation is less than expected. Possible reasons:
 """
 
 # Solar vs Wind vs Demand
+# ASSUMPTION: every source of uncertainty need to be balanced separately for cost estimation
+# ARGUMENT: Valuation for a worst case scenario
 solarErrTot = np.sum(np.abs(solarErr))
 windErrTot = np.sum(np.abs(windErr))
 demandErrTot = np.sum(np.abs(demandErr))
 ErrTot = solarErrTot + windErrTot + demandErrTot
 print("\n Solar contribition {0:2.2f}".format(solarErrTot/ErrTot*100),"%"
       "\n wind contribition {0:2.2f}".format(windErrTot/ErrTot*100),"%"
-      "\n Demand contribition {0:2.2f}".format(demandErrTot/ErrTot*100),"%")
+      "\n Demand contribition {0:2.2f}".format(demandErrTot/ErrTot*100),"% \n")
 
 #Price of Solar
-#Price of Wind
-#Price of Demand
+systemCostSolar = np.abs(solarErr)*np.where(solarErr>0,-MDP,MIP)/4
+systemCostWind = np.abs(windErr)*np.where(windErr>0,-MDP,MIP)/4
+systemCostDemand = np.abs(demandErr)*np.where(-demandErr>0,-MDP,MIP)/4
+systemCostSolarTot = np.sum(systemCostSolar)
+systemCostWindTot = np.sum(systemCostWind)
+systemCostDemandTot = np.sum(systemCostDemand)
+systemCostUncertainty = systemCostSolarTot + systemCostWindTot + systemCostDemandTot
+
+
+
+#The montly cost of SI in €
+print("The monthly solar uncertainty cost is: {0:1.2e}".format(np.sum(systemCostSolar)),"€" )
+print("The monthly wind uncertainty cost is: {0:1.2e}".format(np.sum(systemCostWind)),"€" )
+print("The monthly demand uncertainty cost is: {0:1.2e}".format(np.sum(systemCostDemand)),"€" )
+print("\n Solar cost contribition {0:2.2f}".format(systemCostSolarTot/systemCostUncertainty*100),"%"
+      "\n wind cost contribition {0:2.2f}".format(systemCostWindTot/systemCostUncertainty*100),"%"
+      "\n Demand cost contribition {0:2.2f}".format(systemCostDemandTot/systemCostUncertainty*100),"%")
+
