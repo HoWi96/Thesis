@@ -135,11 +135,11 @@ solarErrTot = np.sum(np.abs(solarErr))
 windErrTot = np.sum(np.abs(windErr))
 demandErrTot = np.sum(np.abs(demandErr))
 ErrTot = solarErrTot + windErrTot + demandErrTot
-print("\n Solar contribition {0:2.2f}".format(solarErrTot/ErrTot*100),"%"
-      "\n wind contribition {0:2.2f}".format(windErrTot/ErrTot*100),"%"
-      "\n Demand contribition {0:2.2f}".format(demandErrTot/ErrTot*100),"% \n")
+print("\n Solar contribition {0:2.2f}".format(solarErrTot/ErrTot*100), "%"
+      "\n wind contribition {0:2.2f}".format(windErrTot/ErrTot*100), "%"
+      "\n Demand contribition {0:2.2f}".format(demandErrTot/ErrTot*100), "% \n")
 
-#Price of Solar
+#Component uncertainty imbalance cost
 systemCostSolar = np.abs(solarErr)*np.where(solarErr>0,-MDP,MIP)/4
 systemCostWind = np.abs(windErr)*np.where(windErr>0,-MDP,MIP)/4
 systemCostDemand = np.abs(demandErr)*np.where(-demandErr>0,-MDP,MIP)/4
@@ -148,13 +148,22 @@ systemCostWindTot = np.sum(systemCostWind)
 systemCostDemandTot = np.sum(systemCostDemand)
 systemCostUncertainty = systemCostSolarTot + systemCostWindTot + systemCostDemandTot
 
-
-
-#The montly cost of SI in €
+#Monthly component uncertainty imbalance cost
 print("The monthly solar uncertainty cost is: {0:1.2e}".format(np.sum(systemCostSolar)),"€" )
 print("The monthly wind uncertainty cost is: {0:1.2e}".format(np.sum(systemCostWind)),"€" )
 print("The monthly demand uncertainty cost is: {0:1.2e}".format(np.sum(systemCostDemand)),"€" )
 print("\n Solar cost contribition {0:2.2f}".format(systemCostSolarTot/systemCostUncertainty*100),"%"
       "\n wind cost contribition {0:2.2f}".format(systemCostWindTot/systemCostUncertainty*100),"%"
       "\n Demand cost contribition {0:2.2f}".format(systemCostDemandTot/systemCostUncertainty*100),"%")
+
+#Plot Component cost
+plt.figure()
+plt.plot(systemCostSolar, label = "solar")
+plt.plot(systemCostWind, label = "wind")
+plt.plot(systemCostDemand, label = "demand")
+plt.legend()
+plt.title("Component uncertainty imbalance cost")
+plt.ylabel("Imbalance Cost [€/MWh]")
+plt.xlabel("Time [0.25h]")
+
 
