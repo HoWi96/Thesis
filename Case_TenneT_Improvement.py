@@ -95,12 +95,13 @@ for i in range(1,TIME_GROUPS):
 volumesC0 = volumesC0/TIME_GROUPS #taking the mean
 
 ##Forecast Horizon
-#168h VS 24h VS 4h
+#720h VS 168h VS 24h VS 4h
 #TODO
 
 #Forecast Uncertainty
+#REMARK: commutative action with time constraint
 volumesC1 = volumesC0.copy()
-volumesC1 = volumesC1 + dfError.quantile(UNCERTAINTY/100)
+volumesC1 = volumesC1 + dfError.quantile(UNCERTAINTY/100) #Improvement: make error dependend of volume
 
 #Volume constraint
 volumesC2 = volumesC1.copy()
