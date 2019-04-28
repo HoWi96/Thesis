@@ -23,7 +23,9 @@ DEMANDPEAK = 11742.29
 
 #Errors wind data
 wdata5h = (windData["5h-ahead"]-windData["RealTime"])/WINDPEAK*100
-wdata24h = (windData["24h-ahead"]-windData["RealTime"])/WINDPEAK*100
+wdata24h = plt.figure()
+volumesC0["aggregator"].plot()
+df["aggregator"].plot()/WINDPEAK*100
 wdata168h = (windData["168h-ahead"]-windData["RealTime"])/WINDPEAK*100
 
 #Errors solar data
@@ -77,28 +79,33 @@ for i,j in ([0,0],[0,1],[0,2],[1,0],[1,1],[1,2],[2,0],[2,1],[2,2]):
     axes[i,j].set_xlabel("Uncertainty [%]")
     axes[i,j].set_title(titles[i][j])
 
-#SCATTER PLOTS
-#plot wind vs solar
-fig,ax = plt.subplots()
-ax.plot(sdata24h,wdata24h,'o',color="black")
-ax.set_xlabel("Solar Data Overestimation 24h [%]")
-ax.set_ylabel("Wind Data Overestimation 24h [%]")
-fig.suptitle("Simultaneous Error 24h")
-#plot demand vs solar
-fig,ax = plt.subplots()
-ax.plot(sdata24h,ddata24h,'o',color="black")
-ax.set_xlabel("Solar Data Overestimation 24h [%]")
-ax.set_ylabel("Demand Data Overestimation 24h [%]")
-fig.suptitle("Simultaneous Error 24h")
-#plot demand vs wind
-fig,ax = plt.subplots()
-ax.plot(wdata24h,ddata24h,'o',color="black")
-ax.set_xlabel("Wind Data Overestimation 24h [%]")
-ax.set_ylabel("Demand Data Overestimation 24h [%]")
-fig.suptitle("Simultaneous Error 24h")
 
-# In[] DESCRIPTIVE STATISTICS
-dataError24h = np.vstack((wdata24h,sdata24h,ddata24h))
-print("\n MEAN \n % overestimation wind + % overestimation solar + % overestimation demand \n", np.mean(dataError24h,1))
-print("\n COVARIANCE MATRIX \n |wind          |solar          |demand  \n", np.cov(dataError24h))
-print("\n CORRELATION MATRIX \n |wind         |solar          |demand  \n", np.corrcoef(dataError24h))
+
+#%%SCATTER PLOTS
+    
+#NO RELEVANT CONCLUSIONS, HENCE COMMENTED
+    
+##plot wind vs solar
+#fig,ax = plt.subplots()
+#ax.plot(sdata24h,wdata24h,'o',color="black")
+#ax.set_xlabel("Solar Data Overestimation 24h [%]")
+#ax.set_ylabel("Wind Data Overestimation 24h [%]")
+#fig.suptitle("Simultaneous Error 24h")
+##plot demand vs solar
+#fig,ax = plt.subplots()
+#ax.plot(sdata24h,ddata24h,'o',color="black")
+#ax.set_xlabel("Solar Data Overestimation 24h [%]")
+#ax.set_ylabel("Demand Data Overestimation 24h [%]")
+#fig.suptitle("Simultaneous Error 24h")
+##plot demand vs wind
+#fig,ax = plt.subplots()
+#ax.plot(wdata24h,ddata24h,'o',color="black")
+#ax.set_xlabel("Wind Data Overestimation 24h [%]")
+#ax.set_ylabel("Demand Data Overestimation 24h [%]")
+#fig.suptitle("Simultaneous Error 24h")
+#
+## In[] DESCRIPTIVE STATISTICS
+#dataError24h = np.vstack((wdata24h,sdata24h,ddata24h))
+#print("\n MEAN \n % overestimation wind + % overestimation solar + % overestimation demand \n", np.mean(dataError24h,1))
+#print("\n COVARIANCE MATRIX \n |wind          |solar          |demand  \n", np.cov(dataError24h))
+#print("\n CORRELATION MATRIX \n |wind         |solar          |demand  \n", np.corrcoef(dataError24h))
