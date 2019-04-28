@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-Created on Fri Dec  7 10:49:15 2018
-
+Created on 27/04/2019
 @author: Holger
 """
 
@@ -16,10 +15,12 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 
+
+#%% DATA PREPROCESSING
+
 solarRaw = pd.read_csv("Data/SolarForecastJune2017.csv")["RealTime"]
 windRaw = pd.read_csv("Data/WindForecastJune2017.csv")["RealTime"]
 
-#%% DATA PREPROCESSING
 SOLAR_MONITORED = 2952.78
 SOLAR_INSTALLED = 30
 WIND_MONITORED = 2424.07
@@ -57,10 +58,12 @@ plt.ylabel('Power [MW]')
 #CONSTANTS--------------------
 
 #Constraints
-TIME_GRANULARITY = 30*24 #h  
-VOLUME_GRANULARITY = 5 #MW
-VOLUME_MIN = 20 #MW
-RELIABILITY = 99 #%
+TIME_GRANULARITY = 4#h  TODO
+TIME_TOTAL = 30*24#h
+TIME_GROUPS = int(TIME_TOTAL/TIME_GRANULARITY)
+VOLUME_GRANULARITY = 1 #MW
+VOLUME_MIN = 1 #MW
+RELIABILITY = 70 #%
 
 #Product Characteristics
 ACTIVATIONS = 2/12 #activations/M
@@ -75,26 +78,35 @@ FINANCIAL_PENALTY = 120*CAPACITY_REMUNERATION #EUR/MWh/activation
 # VOLUME ESTIMATION------------
 
 quantiles = np.linspace(0,1,200)
-volumesC0 = df.quantile(quantiles) #1MONTH
+#Time constraint
+volumesC0 = df[int(0*4*TIME_GRANULARITY):1*4*TIME_GRANULARITY].quantile(quantiles) #1Month
+for i in range(1,TIME_GROUPS):
+    print(i)
+    volumesC0 += df[int(i*4*TIME_GRANULARITY):(i+1)*4*TIME_GRANULARITY].quantile(quantiles)
+volumesC0 = volumesC0/TIME_GROUPS #taking mean
+
+#Volume constraint
 volumesC1 = volumesC0 - volumesC0%VOLUME_GRANULARITY
 volumesC2 = volumesC1.copy(); volumesC2[volumesC1<VOLUME_MIN]=0
-volumesC3 = volumesC2.copy(); volumesC3[quantiles>0.01]=0
+
+#Reliability constraint
+volumesC3 = volumesC2.copy(); volumesC3[quantiles>(1-RELIABILITY/100)]=0
 
 plt.close("all")
 plt.figure()
-volumesC0["aggregator"].plot(label="C0 = Granularity 720h",linestyle = ":")
-volumesC1["aggregator"].plot(label="C1 = Granularity 5MW", linestyle = "--")
-volumesC2["aggregator"].plot(label="C2 = Minimum 20MW")
-volumesC3["aggregator"].plot(label="C3 = Reliability 99%")
+volumesC0["aggregator"].plot(label="C0 = Granularity[h] "+str(TIME_GRANULARITY),linestyle = ":")
+volumesC1["aggregator"].plot(label="C1 = Granularity[MW] " + str(VOLUME_GRANULARITY), linestyle = "--")
+volumesC2["aggregator"].plot(label="C2 = Minimum[MW] "+str(VOLUME_MIN))
+volumesC3["aggregator"].plot(label="C3 = Reliability[%] "+str(RELIABILITY))
 plt.xlabel('Quantiles [%]')
 plt.ylabel('Power [MW]')
 plt.title("Aggregator 130MWp")
 plt.legend()
 
-x = 0.01
-y = volumesC0["aggregator"].quantile(0.01)
+x = 1-RELIABILITY/100
+y = volumesC0["aggregator"].quantile(x)
 plt.plot([x], [y], 'o')
-plt.annotate('C3 = Reliability 99%',
+plt.annotate('C3 = Reliability ' + str(RELIABILITY) +"%",
             xy=(x,y),
             xytext=(.01,.2),
             textcoords = "figure fraction",
@@ -109,12 +121,12 @@ plt.show()
 #Reasonable reliabilities
 #Assumption: ignore unreasonable reliabilities
 quantiles = quantiles #np.array([0,0.003,0.01,0.05,0.10,0.15,0.20,0.50]) 
-volumes = volumesC2
+volumes = volumesC3
 
 #Monthly Revenues
 #Assumption: ignore reported non-availability
 
-capacityRemuneration= TIME_GRANULARITY*CAPACITY_REMUNERATION*volumes
+capacityRemuneration= TIME_TOTAL*CAPACITY_REMUNERATION*volumes
 activationRemuneration = ACTIVATION_DURATION*ACTIVATION_REMUNERATION*volumes
 financialPenalty = ACTIVATION_DURATION*FINANCIAL_PENALTY*volumes
 

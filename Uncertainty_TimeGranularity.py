@@ -5,30 +5,31 @@ Created on Tue Feb 26 18:17:25 2019
 @author: HoWi96
 """
 
-# In[] IMPORTS
+#%% IMPORTS
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
-import scipy.special
-from mpl_toolkits import mplot3d 
 
-# In[] PREPROCESS DATA
-def preprocessData(dataPath="Data/DataJune2017.csv"):
-    data = pd.read_csv(dataPath)
-
-    SunMonitored = 2952.78
-    WindMonitored = 2403.17
-    SunInstalled = 30
-    WindInstalled = 100
-
-    data["WIND2017"] = data["WIND2017"]*WindInstalled/WindMonitored
-    data["SUN2017"] = data["SUN2017"]*SunInstalled/SunMonitored
-    data["AGG2017"] = data["WIND2017"]+data["SUN2017"]
-    return data
+#%% PREPROCESS DATA
+def preprocessData():
+    
+    solarRaw = pd.read_csv("Data/SolarForecastJune2017.csv")["RealTime"]
+    windRaw = pd.read_csv("Data/WindForecastJune2017.csv")["RealTime"]
+    
+    SOLAR_MONITORED = 2952.78
+    SOLAR_INSTALLED = 30
+    WIND_MONITORED = 2424.07
+    WIND_INSTALLED = 100
+    
+    wind = windRaw*WIND_INSTALLED/WIND_MONITORED
+    solar = solarRaw*SOLAR_INSTALLED/SOLAR_MONITORED
+    agg = wind + solar
+    df = pd.DataFrame(data={"wind":wind,"solar":solar,"aggregator":agg})
+    return df
 
 # In[] PROCESS DATA
 def experimentParameterTime(uncertainty = 0.2):
-    data = preprocessData(dataPath="Data/DataJune2017.csv")["AGG2017"]
+    data = preprocessData()["aggregator"]
     hours = int(data.shape[0]/4)
     totalEnergy = sum(data)/4
 
@@ -52,7 +53,7 @@ def experimentParameterTime(uncertainty = 0.2):
     
     
 def experimentParameterUncertainty(period = 4):
-    data = preprocessData(dataPath="Data/DataJune2017.csv")["AGG2017"]
+    data = preprocessData()["aggregator"]
     hours = int(data.shape[0]/4)
     totalEnergy = sum(data)/4
     
@@ -96,7 +97,7 @@ if __name__ == "__main__":
     
     #Process Data
     def processEnergyRatio(uncertainty,periods):
-        data = preprocessData(dataPath="Data/DataJune2017.csv")["AGG2017"]
+        data = preprocessData()["aggregator"]
         hours = int(data.shape[0]/4)
         totalEnergy = sum(data)/4
         varEnergy = np.zeros((len(uncertainty),len(periods),))
