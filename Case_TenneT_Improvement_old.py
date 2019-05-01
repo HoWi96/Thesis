@@ -27,26 +27,16 @@ WIND_MONITORED = 2424.07
 WIND_INSTALLED = 100
 
 #Preprocess data
-wind168 = windRaw["168h-ahead"]*WIND_INSTALLED/WIND_MONITORED
-solar168 = solarRaw["168h-ahead"]*SOLAR_INSTALLED/SOLAR_MONITORED
-agg168 = wind168 + solar168
-
-wind24 = windRaw["24h-ahead"]*WIND_INSTALLED/WIND_MONITORED
-solar24 = solarRaw["24h-ahead"]*SOLAR_INSTALLED/SOLAR_MONITORED
-agg24 = wind24 + solar24
-
-wind5 = windRaw["5h-ahead"]*WIND_INSTALLED/WIND_MONITORED
-solar3 = solarRaw["3h-ahead"]*SOLAR_INSTALLED/SOLAR_MONITORED
-agg4 = wind5 + solar3
-
-wind = windRaw["RealTime"]*WIND_INSTALLED/WIND_MONITORED
-solar = solarRaw["RealTime"]*SOLAR_INSTALLED/SOLAR_MONITORED
+wind = windRaw["24h-ahead"]*WIND_INSTALLED/WIND_MONITORED
+solar = solarRaw["24h-ahead"]*SOLAR_INSTALLED/SOLAR_MONITORED
 agg = wind + solar
+df = pd.DataFrame(data={"wind":wind,"solar":solar,"aggregator":agg})
 
-
-df = pd.DataFrame(data={0:agg,4:agg4,24:agg24,168:agg168})
-dfComponents = pd.DataFrame(data={"wind":wind,"solar":solar,"aggregator":agg})
-dfError = pd.DataFrame(data={"wind":wind-wind24,"solar":solar-solar24,"aggregator":agg-agg24})
+#Preprocess error
+windError = (windRaw["RealTime"]-windRaw["24h-ahead"])*WIND_INSTALLED/WIND_MONITORED
+solarError = (solarRaw["RealTime"]-solarRaw["24h-ahead"])*SOLAR_INSTALLED/SOLAR_MONITORED
+aggError = windError + solarError
+dfError = pd.DataFrame(data={"wind":windError,"solar":solarError,"aggregator":aggError})
 
 #%% DATA EXPLORATION
 
@@ -54,19 +44,19 @@ dfError = pd.DataFrame(data={"wind":wind-wind24,"solar":solar-solar24,"aggregato
 plt.close("all")
 
 #Visualisation Time Series
-dfComponents.plot()
+df.plot()
 plt.ylabel("Power [MW]")
 plt.xlabel("Time [15']")
 
 #Visualisation Probability Density Function
-dfComponents.plot.kde()
+df.plot.kde()
 plt.xlabel("Power [MW]")
 
 #visualisation Quantile Function
 plt.figure()
 quantiles = np.linspace(0,1,20)
-plot = plt.plot(quantiles*100,dfComponents.quantile(quantiles))
-plt.legend(plot, list(dfComponents))
+plot = plt.plot(quantiles*100,df.quantile(quantiles))
+plt.legend(plot, list(df))
 plt.xlabel('Quantiles [%]')
 plt.ylabel('Power [MW]')
 
@@ -75,21 +65,17 @@ plt.ylabel('Power [MW]')
 #CONSTANTS--------------------
 
 #Constraints
-TIME_DURATION = 1#h
-TIME_GRANULARITY = 1#h
-TIME_HORIZON = 4#h
-VOLUME_GRANULARITY = .1#MW
-VOLUME_MIN = 1#MW
-ACTIVATION_DURATION = 1#h
-
-UNCERTAINTY = 20 #%
-RELIABILITY = 99 #%
-
+TIME_GRANULARITY = 4#h  TODO
+TIME_TOTAL = 30*24#h
+TIME_GROUPS = int(TIME_TOTAL/TIME_GRANULARITY)
+VOLUME_GRANULARITY = 1 #MW
+VOLUME_MIN = 1 #MW
+RELIABILITY = 70 #%
 
 #Product Characteristics
 ACTIVATIONS = 2/12 #activations/M
-TIME_TOTAL = 30*24#h
-TIME_GROUPS = int(TIME_TOTAL/TIME_GRANULARITY)
+ACTIVATION_DURATION = 1 #h
+UNCERTAINTY = 20 #%
 
 #Remuneration & Penalisation
 EPEX_SPOT_PRICE = 70 #EUR/MW
@@ -100,20 +86,22 @@ FINANCIAL_PENALTY = 120*CAPACITY_REMUNERATION #EUR/MWh/activation
 # VOLUME ESTIMATION------------
 
 quantiles = np.linspace(0,1,200)
-volumes = df[TIME_HORIZON]
 
 #Time constraint
-volumesC0 = volumes[int(0*4*TIME_GRANULARITY):1*4*TIME_GRANULARITY].quantile(quantiles) #1Month
+volumesC0 = df.copy()
+volumesC0 = df[int(0*4*TIME_GRANULARITY):1*4*TIME_GRANULARITY].quantile(quantiles) #1Month
 for i in range(1,TIME_GROUPS):
-    volumesC0 += volumes[int(i*4*TIME_GRANULARITY):(i+1)*4*TIME_GRANULARITY].quantile(quantiles)
+    volumesC0 += df[int(i*4*TIME_GRANULARITY):(i+1)*4*TIME_GRANULARITY].quantile(quantiles)
 volumesC0 = volumesC0/TIME_GROUPS #taking the mean
 
-#Forecast Horizon + Forecast Uncertainty
+##Forecast Horizon
+#720h VS 168h VS 24h VS 4h
+#TODO
+
+#Forecast Uncertainty
 #REMARK: commutative action with time constraint
-#TODO Improvement: make error dependend of volume
 volumesC1 = volumesC0.copy()
-error = df[TIME_HORIZON]-df[0]
-volumesC1 = volumesC1 + error.quantile(UNCERTAINTY/100) 
+volumesC1 = volumesC1 + dfError.quantile(UNCERTAINTY/100) #Improvement: make error dependend of volume
 
 #Volume constraint
 volumesC2 = volumesC1.copy()
@@ -123,28 +111,31 @@ volumesC3 = volumesC2.copy(); volumesC3[volumesC1<VOLUME_MIN]=0
 #Reliability constraint
 volumesC4 = volumesC3.copy(); volumesC4[quantiles>(1-RELIABILITY/100)]=0
 
+#Check uncertainty
+plt.figure()
+volumesC0["aggregator"].plot(label = "Compensated" + str(UNCERTAINTY)+"% Uncertainty")
+df["aggregator"].plot(label = "24h Forecast")
+plt.legend()
+
 #Impact
 plt.close("all")
 plt.figure()
-volumesC0.plot(label="C0a Duration "+str(TIME_DURATION)+"h"+
-               "\nC0b Granularity "+str(TIME_GRANULARITY) +"h",linestyle = ":")
-volumesC1.plot(label="C1a Horizon "+str(TIME_HORIZON)+"h"+
-               "\nC1b Uncertainty "+str(UNCERTAINTY)+"%",linestyle = ":")
-volumesC3.plot(label="C2a Granularity " + str(VOLUME_GRANULARITY)+"MW"+
-               "\nC2b Minimum "+str(VOLUME_MIN)+"MW",linestyle = "--")
-volumesC4.plot(label="C3a Activation "+str(ACTIVATION_DURATION)+"h"
-               "\nC3b Reliability "+str(RELIABILITY)+"%")
+volumesC0["aggregator"].plot(label="C0 Granularity "+str(TIME_GRANULARITY) +"h",linestyle = ":")
+volumesC1["aggregator"].plot(label="C1 Uncertainty "+str(UNCERTAINTY)+"%",linestyle = ":")
+volumesC2["aggregator"].plot(label="C2 Granularity " + str(VOLUME_GRANULARITY)+"MW", linestyle = "--")
+volumesC3["aggregator"].plot(label="C3 Minimum "+str(VOLUME_MIN)+"MW")
+volumesC4["aggregator"].plot(label="C4 Reliability "+str(RELIABILITY)+"%")
 plt.xlabel('Quantiles [%]')
 plt.ylabel('Power [MW]')
 plt.title("Aggregator 130MWp")
 plt.legend()
 
 x = 1-RELIABILITY/100
-y = volumesC3.quantile(x)
+y = volumesC1["aggregator"].quantile(x)
 plt.plot([x], [y], 'o')
 plt.annotate('C4 = Reliability ' + str(RELIABILITY) +"% \n"+ str(round(y,2))+ "MW",
             xy=(x,y),
-            xytext=(.2,.2),
+            xytext=(.01,.01),
             textcoords = "figure fraction",
             arrowprops=dict(facecolor='black', shrink=0.05),
             horizontalalignment='left',
@@ -155,7 +146,7 @@ plt.show()
 # VALUE ESTIMATION-------------
 
 #TODO
-#Proposal penalty mechanism
+#Proposal activation Penalty
 
 #Reasonable reliabilities
 #Assumption: ignore unreasonable reliabilities
@@ -164,29 +155,36 @@ volumes = volumesC4
 
 #Monthly Revenues
 #Assumption: ignore reported non-availability
+
 capacityRemuneration= TIME_TOTAL*CAPACITY_REMUNERATION*volumes
 activationRemuneration = ACTIVATION_DURATION*ACTIVATION_REMUNERATION*volumes
 activationPenalty = ACTIVATION_DURATION*FINANCIAL_PENALTY*volumes
-#revenues1 = capacityRemuneration + E[activationRemuneration] - E[finacialPenalty]
-revenues1 = capacityRemuneration + ACTIVATIONS*(activationRemuneration.multiply((1-quantiles),0) - activationPenalty.multiply(quantiles,0))
 
 #Components Expected Revenues Aggregator
 plt.figure()
-(capacityRemuneration/10**3).plot(label = "capacity remuneration")
-(ACTIVATIONS*activationRemuneration.multiply((1-quantiles),0)/10**3).plot(label = "activation remuneration")
-(ACTIVATIONS*activationPenalty.multiply(quantiles,0)/10**3).plot(label = "financial penalty")
-(revenues1/10**3).plot(label = "Expected revenues")
+(capacityRemuneration["aggregator"]/10**3).plot(label = "capacity remuneration")
+(ACTIVATIONS*activationRemuneration["aggregator"].multiply((1-quantiles),0)/10**3).plot(label = "activation remuneration")
+(ACTIVATIONS*activationPenalty["aggregator"].multiply(quantiles,0)/10**3).plot(label = "financial penalty")
 plt.xlabel("Quantiles")
-plt.ylabel("Revenues [kâ‚¬/Month]")
+plt.ylabel("Revenues [k€/Month]")
 plt.legend()
 plt.show()
 
+#Total Expected Revenues
+#revenues1 = capacityRemuneration + E[activationRemuneration] - E[finacialPenalty]
+revenues1 = capacityRemuneration + ACTIVATIONS*(activationRemuneration.multiply((1-quantiles),0) - activationPenalty.multiply(quantiles,0))
+(revenues1/10**3).plot()
+((revenues1["aggregator"]-revenues1["wind"]-revenues1["solar"])/10**3).plot(label="added value aggregator")
+plt.xlabel("Quantiles")
+plt.ylabel("Revenues [k€/Month]")
+plt.legend()
+
 #RECOMMENDATION ------------------
-x = revenues1.idxmax()
-y = revenues1[x]/10**3
+x = revenues1["aggregator"].idxmax()
+y = revenues1["aggregator"][x]/10**3
 
 plt.plot([x], [y], 'o')
-plt.annotate('financial optimum '+str(round(y,2))+"kâ‚¬/M",
+plt.annotate('financial optimum '+str(round(y,2))+"k€/M",
             xy=(x,y),
             xytext=(0.65,0.9),
             textcoords = "figure fraction",

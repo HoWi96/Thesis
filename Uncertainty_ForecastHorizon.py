@@ -23,9 +23,7 @@ DEMANDPEAK = 11742.29
 
 #Errors wind data
 wdata5h = (windData["5h-ahead"]-windData["RealTime"])/WINDPEAK*100
-wdata24h = plt.figure()
-volumesC0["aggregator"].plot()
-df["aggregator"].plot()/WINDPEAK*100
+wdata24h = (windData["24h-ahead"]-windData["RealTime"])/WINDPEAK*100
 wdata168h = (windData["168h-ahead"]-windData["RealTime"])/WINDPEAK*100
 
 #Errors solar data
