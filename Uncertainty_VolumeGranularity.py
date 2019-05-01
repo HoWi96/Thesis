@@ -34,7 +34,6 @@ for i,size in enumerate(x):
 plt.close("all")
 
 volume.plot()
-plt.legend()
 plt.xlabel('Volume Granularity [$\Delta$MW]')
 plt.ylabel('Lost Volume [MW]')
-plt.title("Lost Volume By Granularity")
+plt.title("Lost Volume By Volume Granularity")
