@@ -14,7 +14,7 @@ chdir(wd)
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
-
+from scipy.stats import norm
 
 #%% DATA PREPROCESSING
 
@@ -46,7 +46,7 @@ agg = wind + solar
 
 df = pd.DataFrame(data={0:agg,4:agg4,24:agg24,168:agg168})
 dfComponents = pd.DataFrame(data={"wind":wind,"solar":solar,"aggregator":agg})
-dfError = pd.DataFrame(data={"wind":wind-wind24,"solar":solar-solar24,"aggregator":agg-agg24})
+#dfError = pd.DataFrame(data={"wind":wind-wind24,"solar":solar-solar24,"aggregator":agg-agg24})
 
 #%% DATA EXPLORATION
 
@@ -82,9 +82,8 @@ VOLUME_GRANULARITY = .1#MW
 VOLUME_MIN = 1#MW
 ACTIVATION_DURATION = 1#h
 
-UNCERTAINTY = 20 #%
-RELIABILITY = 99 #%
-
+UNCERTAINTY = 15.87 #round(norm.cdf(-1)*100,2)
+RELIABILITY = 97.72 #round(norm.cdf(2)*100,2)
 
 #Product Characteristics
 ACTIVATIONS = 2/12 #activations/M
