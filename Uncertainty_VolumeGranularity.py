@@ -1,47 +1,40 @@
 # -*- coding: utf-8 -*-
 """
-Created on Wed Mar 20 14:50:53 2019
-
-@author: user
+Created: May 2019
+@author: Holger
 """
 
-# In[] IMPORTS
+#%%IMPORTS
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
-import scipy.special
-from mpl_toolkits import mplot3d
 
+solarRaw = pd.read_csv("Data/SolarForecastJune2017.csv")["RealTime"]
+windRaw = pd.read_csv("Data/WindForecastJune2017.csv")["RealTime"]
 
-# In[] Upload Data
+#%% Preprocess Data Data
 
-solarData = pd.read_csv("Data/SolarForecastJune2017.csv")
-windData = pd.read_csv("Data/WindForecastJune2017.csv")
 WINDINSTALLED = 2403.17
 SOLARINSTALLED = 2952.78  
 
-solar = solarData["RealTime"]*30/SOLARINSTALLED
-wind = windData["RealTime"]*100/WINDINSTALLED
+solar = solarRaw*30/SOLARINSTALLED
+wind = windRaw*100/WINDINSTALLED
+agg = solar + wind
+x = np.linspace(0,5,200)
 
-x = np.array([0.01,0.1,0.5,1,2,4,5,10,20])
+volume = pd.DataFrame(index = x, data={"wind":np.zeros(x.shape),
+                                       "solar":np.zeros(x.shape),
+                                       "agg":np.zeros(x.shape)})
 
-i = 0
-for size in x:
-    test[0,i] = sum(solar%size)/sum(solar)*100
-    test[1,i] = sum(wind%size)/sum(solar+wind)*100
-    test[2,i] = sum((solar+wind)%size)/sum(solar+wind)*100
-    i=i+1
+for i,size in enumerate(x):
+    volume["wind"][i] = (solar%size).mean()
+    volume["solar"][i] = (wind%size).mean()
+    volume["agg"][i] = (agg%size).mean()
     
-    plt.close("all")
-    plt.plot(x,test[0], label='solar')
-    plt.plot(x,test[1], label='wind')
-    plt.plot(x,test[2], label='aggregator')
-    plt.legend()
-    plt.xlabel('Volume size [MW]')
-    plt.ylabel('Relative energy not offered [%]')
+plt.close("all")
 
-
-
-
-
-
+volume.plot()
+plt.legend()
+plt.xlabel('Volume Granularity [$\Delta$MW]')
+plt.ylabel('Lost Volume [MW]')
+plt.title("Lost Volume By Granularity")
