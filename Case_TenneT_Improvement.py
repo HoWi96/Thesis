@@ -20,13 +20,21 @@ from scipy.stats import norm
 
 solarRaw = pd.read_csv("Data/SolarForecastJune2017.csv")
 windRaw = pd.read_csv("Data/WindForecastJune2017.csv")
+data2016 = pd.read_csv("Data/data2016.csv")
 
 SOLAR_MONITORED = 2952.78
+SOLAR_MONITORED2016 = 2952.78
 SOLAR_INSTALLED = 30
 WIND_MONITORED = 2424.07
+WIND_MONITORED2016 = 1960.91
 WIND_INSTALLED = 100
 
+
 #Preprocess data
+wind8760 = data2016["wind"]*WIND_INSTALLED/WIND_MONITORED2016
+solar8760 = data2016["solar"]*SOLAR_INSTALLED/SOLAR_MONITORED2016
+agg8760 = wind8760 + solar8760
+
 wind168 = windRaw["168h-ahead"]*WIND_INSTALLED/WIND_MONITORED
 solar168 = solarRaw["168h-ahead"]*SOLAR_INSTALLED/SOLAR_MONITORED
 agg168 = wind168 + solar168
@@ -44,7 +52,7 @@ solar = solarRaw["RealTime"]*SOLAR_INSTALLED/SOLAR_MONITORED
 agg = wind + solar
 
 
-df = pd.DataFrame(data={0:agg,4:agg4,24:agg24,168:agg168})
+df = pd.DataFrame(data={0:agg,4:agg4,24:agg24,168:agg168,8760:agg8760})
 dfComponents = pd.DataFrame(data={"wind":wind,"solar":solar,"aggregator":agg})
 #dfError = pd.DataFrame(data={"wind":wind-wind24,"solar":solar-solar24,"aggregator":agg-agg24})
 
@@ -75,15 +83,15 @@ plt.ylabel('Power [MW]')
 #CONSTANTS--------------------
 
 #Constraints
-TIME_DURATION = 1#h
-TIME_GRANULARITY = 1#h
-TIME_HORIZON = 4#h
-VOLUME_GRANULARITY = .1#MW
-VOLUME_MIN = 1#MW
+TIME_DURATION = 720#h
+TIME_GRANULARITY = 720#h
+TIME_HORIZON = 8760#h
+VOLUME_GRANULARITY = 5#MW
+VOLUME_MIN = 20#MW
 ACTIVATION_DURATION = 1#h
 
-UNCERTAINTY = 15.87 #round(norm.cdf(-1)*100,2)
-RELIABILITY = 97.72 #round(norm.cdf(2)*100,2)
+UNCERTAINTY = 20 #round(norm.cdf(-1)*100,2)
+RELIABILITY = 80 #round(norm.cdf(2)*100,2)
 
 #Product Characteristics
 ACTIVATIONS = 2/12 #activations/M
@@ -102,9 +110,9 @@ quantiles = np.linspace(0,1,200)
 volumes = df[TIME_HORIZON]
 
 #Time constraint
-volumesC0 = volumes[int(0*4*TIME_GRANULARITY):1*4*TIME_GRANULARITY].quantile(quantiles) #1Month
+volumesC0 = volumes[int(0*4*TIME_GRANULARITY):int(1*4*TIME_GRANULARITY)].quantile(quantiles) #1Month
 for i in range(1,TIME_GROUPS):
-    volumesC0 += volumes[int(i*4*TIME_GRANULARITY):(i+1)*4*TIME_GRANULARITY].quantile(quantiles)
+    volumesC0 += volumes[int(i*4*TIME_GRANULARITY):int((i+1)*4*TIME_GRANULARITY)].quantile(quantiles)
 volumesC0 = volumesC0/TIME_GROUPS #taking the mean
 
 #Forecast Horizon + Forecast Uncertainty
