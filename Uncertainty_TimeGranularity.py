@@ -30,7 +30,7 @@ df = pd.DataFrame(data={"wind":wind,"solar":solar,"agg":agg})
 RELIABILITY = 97.72 #round(norm.cdf(2)*100,2)
 #RELIABILITY = 84.13 #round(norm.cdf(1)*100,2)
 TIME_TOTAL = 720.#h
-TIME_GRANULARITY = np.array([.25,.5,1,2,3,4,5,6,8,9,10,12,15,16,18,20,24,30,40,48])#h
+TIME_GRANULARITY = np.array([.25,.5,1,2,3,4,5,6,8,9,10,12,15,16,18,20,24,30,40,48,50,60,72,80,90,120,144,180,240])#h
 TIME_GROUPS = np.array(TIME_TOTAL/TIME_GRANULARITY,dtype="int")
 
 volume = np.zeros((TIME_GRANULARITY.size,3))

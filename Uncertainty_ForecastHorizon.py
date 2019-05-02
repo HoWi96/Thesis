@@ -54,7 +54,7 @@ ddata8760 = demandData["RealTime"]-data2016["load"]*DEMAND_INST/DEMAND_INST2016
 ddata = pd.DataFrame(data={4:ddata3, 24:ddata24, 168:ddata168, 8760:ddata8760})/DEMAND_INST*100
 
 #Errors aggregator data
-aggdata = (30*sdata + 100*wdata)/130
+aggdata = (30*sdata + 100*wdata)/100
 
 #%% DENSITY PLOTS
 plt.close("all")
@@ -67,14 +67,15 @@ ddata.plot.density(ax = axes[2])
 for i in (0,1,2):
     axes[i].set_title(titles[i])
     axes[i].set_xlabel("$\Delta$P [%MW]")
+    axes[i].set_xlim(-50,50)
     
 
 #%% QUANTILE PLOTS
 fig,axes = plt.subplots(1,3)
 x = np.linspace(0,1,100)
-axes[0].plot(x,wdata.quantile(x)+100)
-axes[1].plot(x,sdata.quantile(x)+100)
-axes[2].plot(x,ddata.quantile(x)+100)
+axes[0].plot(x*100,wdata.quantile(x)+100)
+axes[1].plot(x*100,sdata.quantile(x)+100)
+axes[2].plot(x*100,ddata.quantile(x)+100)
 
 for i in (0,1,2):
     axes[i].set_ylabel("$\Delta$P [%MW]")
@@ -117,20 +118,21 @@ fig,axes = plt.subplots(1,3)
 fig.suptitle("Aggregator 130MWp")
              
 aggdata.plot.density(ax = axes[0])
-axes[0].set_xlabel("$\Delta$P [%MW]")
+axes[0].set_xlabel("$\Delta$P [MW]")
 axes[0].set_title("Error Density Plot")
+axes[0].set_xlim(-50,50)
 
-axes[1].plot(x,aggdata.quantile(x)+100)
+axes[1].plot(x*100,aggdata.quantile(x))
 axes[1].set_title("Error Quantile Plot")
 axes[1].set_xlabel("Uncertainty [%]")
-axes[1].set_ylabel("$\Delta$P [%MW]")
+axes[1].set_ylabel("$\Delta$P [MW]")
 axes[1].legend((4,24,168,8760))
 
 axes[2].plot(horizons,aggregatorSd,label="$\sigma_{error}$")
 axes[2].plot(horizons,np.abs(aggdata.quantile(quantileSd)),label="$\sigma_{quantile}$")
-axes[2].set_ylabel("$\sigma$ [%]")
-axes[2].set_xlabel("time horizon [h]")
-axes[2].set_title("Volume Impact")
+axes[2].set_ylabel("Lost Volume [MW]")
+axes[2].set_xlabel("Time Horizon [h]")
+axes[2].set_title("Lost Volume By Time Horizon\nUncertainty= "+str(round(quantileSd*100,2))+"%")
 axes[2].legend()
     
 #%% DESCRIPTIVE STATISTICS
