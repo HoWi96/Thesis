@@ -14,7 +14,6 @@ chdir(wd)
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
-from scipy.stats import norm
 
 #%% DATA PREPROCESSING
 
@@ -28,7 +27,6 @@ SOLAR_INSTALLED = 30
 WIND_MONITORED = 2424.07
 WIND_MONITORED2016 = 1960.91
 WIND_INSTALLED = 100
-
 
 #Preprocess data
 wind8760 = data2016["wind"]*WIND_INSTALLED/WIND_MONITORED2016
@@ -51,10 +49,9 @@ wind = windRaw["RealTime"]*WIND_INSTALLED/WIND_MONITORED
 solar = solarRaw["RealTime"]*SOLAR_INSTALLED/SOLAR_MONITORED
 agg = wind + solar
 
-
+#Place data in a dataframe, easy to handle
 df = pd.DataFrame(data={0:agg,4:agg4,24:agg24,168:agg168,8760:agg8760})
 dfComponents = pd.DataFrame(data={"wind":wind,"solar":solar,"aggregator":agg})
-#dfError = pd.DataFrame(data={"wind":wind-wind24,"solar":solar-solar24,"aggregator":agg-agg24})
 
 #%% DATA EXPLORATION
 
@@ -78,22 +75,20 @@ plt.legend(plot, list(dfComponents))
 plt.xlabel('Quantiles [%]')
 plt.ylabel('Power [MW]')
 
-#%% FINANCIAL CONSIDERATIONS
-
-#CONSTANTS--------------------
+#%% CONSTANTS
 
 #Constraints
-TIME_DURATION = 720#h
 TIME_GRANULARITY = 720#h
-TIME_HORIZON = 8760#h
-VOLUME_GRANULARITY = 5#MW
-VOLUME_MIN = 20#MW
-ACTIVATION_DURATION = 1#h
+TIME_HORIZON = 168#h
+VOLUME_GRANULARITY = 1#MW
+VOLUME_MIN = 1#MW
 
-UNCERTAINTY = 20 #round(norm.cdf(-1)*100,2)
-RELIABILITY = 80 #round(norm.cdf(2)*100,2)
+ACTIVATION_DURATION = 1#h
+UNCERTAINTY = 30 
+TIME_QUANTILE = 5 
 
 #Product Characteristics
+TIME_DURATION = 24#h
 ACTIVATIONS = 2/12 #activations/M
 TIME_TOTAL = 30*24#h
 TIME_GROUPS = int(TIME_TOTAL/TIME_GRANULARITY)
@@ -104,54 +99,92 @@ ACTIVATION_REMUNERATION = max(250-EPEX_SPOT_PRICE,0) #EUR/MWh/activation
 CAPACITY_REMUNERATION = 6 #EUR/MW/h
 FINANCIAL_PENALTY = 120*CAPACITY_REMUNERATION #EUR/MWh/activation
 
-# VOLUME ESTIMATION------------
+#%% VOLUME ESTIMATION
 
-quantiles = np.linspace(0,1,200)
+quantiles = np.linspace(0,1,400)
+
+#C1 TIME GRANULARITY------------
 volumes = df[TIME_HORIZON]
-
-#Time constraint
 volumesC0 = volumes[int(0*4*TIME_GRANULARITY):int(1*4*TIME_GRANULARITY)].quantile(quantiles) #1Month
 for i in range(1,TIME_GROUPS):
     volumesC0 += volumes[int(i*4*TIME_GRANULARITY):int((i+1)*4*TIME_GRANULARITY)].quantile(quantiles)
-volumesC0 = volumesC0/TIME_GROUPS #taking the mean
 
-#Forecast Horizon + Forecast Uncertainty
-#REMARK: commutative action with time constraint
-#TODO Improvement: make error dependend of volume
+#taking the mean
+volumesC0 = volumesC0/TIME_GROUPS 
+
+# C2 TIME HORIZON---------------
+#REMARK: commutative property with time granularity
+
+#Make a dictionary of indexbins and errorbins
+indexbin = {}
+errorbin = {}
+errSd = list()
+errN = list()
+step = 4
+minbin = round(df[TIME_HORIZON].min()- df[TIME_HORIZON].min()%step)
+maxbin = df[TIME_HORIZON].max()
+fig,axes = plt.subplots(7,4)
+
+#Iterate over all bins
+for i,x in enumerate(np.arange(minbin,maxbin,step)):
+    indexbin[x] = np.where(np.column_stack((df[TIME_HORIZON]>x,df[TIME_HORIZON]<(x+step))).all(axis=1))[0]
+    errorbin[x] = df[0][indexbin[x]]-df[TIME_HORIZON][indexbin[x]]
+    errSd.append(errorbin[x].std())
+    errN.append(len(errorbin[x]))
+    
+    ##error density plot + standard deviation per bin
+    #errorbin[x].plot.density(ax = axes[int(i/4),i%4])
+    #axes[int(i/4),i%4].set_title(str(round(errorbin[x].std(),2)))
+    
+#Illustrate standard deviation + amount of sample per bin
+fig,axes = plt.subplots(1,2)
+axes[0].plot(np.arange(minbin,maxbin,step),errSd)
+axes[1].plot(np.arange(minbin,maxbin,step),errN)
+
+#add forecast error
 volumesC1 = volumesC0.copy()
-error = df[TIME_HORIZON]-df[0]
-volumesC1 = volumesC1 + error.quantile(UNCERTAINTY/100) 
+keys = (volumesC1-volumesC1%step).astype("int")
+volumesC1 = volumesC1 + [errorbin[key].quantile(UNCERTAINTY/100) for key in keys]
+volumesC1[volumesC1<0]=0
 
-#Volume constraint
+# VOLUME CONSTRAINT----------------
+
+#volume granularity
 volumesC2 = volumesC1.copy()
 volumesC2 = volumesC1 - volumesC1%VOLUME_GRANULARITY
+
+#volume minimum
 volumesC3 = volumesC2.copy(); volumesC3[volumesC1<VOLUME_MIN]=0
 
-#Reliability constraint
-volumesC4 = volumesC3.copy(); volumesC4[quantiles>(1-RELIABILITY/100)]=0
 
-#Impact
-plt.close("all")
+
+# ILLUSTRATE-----------------------
+
+#make plot
 plt.figure()
-volumesC0.plot(label="C0a Duration "+str(TIME_DURATION)+"h"+
-               "\nC0b Granularity "+str(TIME_GRANULARITY) +"h",linestyle = ":")
-volumesC1.plot(label="C1a Horizon "+str(TIME_HORIZON)+"h"+
-               "\nC1b Uncertainty "+str(UNCERTAINTY)+"%",linestyle = ":")
-volumesC3.plot(label="C2a Granularity " + str(VOLUME_GRANULARITY)+"MW"+
-               "\nC2b Minimum "+str(VOLUME_MIN)+"MW",linestyle = "--")
-volumesC4.plot(label="C3a Activation "+str(ACTIVATION_DURATION)+"h"
-               "\nC3b Reliability "+str(RELIABILITY)+"%")
-plt.xlabel('Quantiles [%]')
+
+plt.axhline(df[0].mean(),label="Unconstrained Real Time")
+
+volumesC0.plot(label="C1 Granularity "+str(TIME_GRANULARITY) +"h",linestyle = ":")
+
+volumesC1.plot(label="C2a Horizon "+str(TIME_HORIZON)+"h"+
+               "\nC2b Uncertainty "+str(UNCERTAINTY)+"%",linestyle = ":")
+
+volumesC3.plot(label="C3a Granularity " + str(VOLUME_GRANULARITY)+"MW"+
+               "\nC3b Minimum "+str(VOLUME_MIN)+"MW",linestyle = "--")
+
+plt.xlabel('Time quantile [%]')
 plt.ylabel('Power [MW]')
 plt.title("Aggregator 130MWp")
 plt.legend()
 
-x = 1-RELIABILITY/100
-y = volumesC3.quantile(x)
+#Label preferred time quantile
+x = TIME_QUANTILE/100
+y = volumesC3.quantile(x)-VOLUME_GRANULARITY
 plt.plot([x], [y], 'o')
-plt.annotate('C4 = Reliability ' + str(RELIABILITY) +"% \n"+ str(round(y,2))+ "MW",
+plt.annotate('Time Quantile ' + str(TIME_QUANTILE) +"% \n"+ str(round(y,2))+ "MW",
             xy=(x,y),
-            xytext=(.2,.2),
+            xytext=(.4,.2),
             textcoords = "figure fraction",
             arrowprops=dict(facecolor='black', shrink=0.05),
             horizontalalignment='left',
@@ -159,15 +192,14 @@ plt.annotate('C4 = Reliability ' + str(RELIABILITY) +"% \n"+ str(round(y,2))+ "M
             )
 plt.show()
 
-# VALUE ESTIMATION-------------
+#%% VALUE ESTIMATION TODO
 
-#TODO
 #Proposal penalty mechanism
 
 #Reasonable reliabilities
 #Assumption: ignore unreasonable reliabilities
 quantiles = quantiles #np.array([0,0.003,0.01,0.05,0.10,0.15,0.20,0.50]) 
-volumes = volumesC4
+volumes = volumesC3
 
 #Monthly Revenues
 #Assumption: ignore reported non-availability
