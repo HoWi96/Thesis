@@ -6,11 +6,6 @@ Created on 27/04/2019
 
 #%% SET_UP
 
-#Set correct working directory
-from os import chdir, getcwd
-wd=getcwd()
-chdir(wd)
-
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
@@ -69,22 +64,32 @@ plt.xlabel("Power [MW]")
 
 #visualisation Quantile Function
 plt.figure()
-quantiles = np.linspace(0,1,20)
-plot = plt.plot(quantiles*100,dfComponents.quantile(quantiles))
-plt.legend(plot, list(dfComponents))
+
+quantiles = np.arange(0,1.05,.05)
+
+plot1 = plt.plot(quantiles*100,dfComponents.quantile(quantiles))
+addedValue = dfComponents["aggregator"].quantile(quantiles) - dfComponents["solar"].quantile(quantiles) - dfComponents["wind"].quantile(quantiles)
+plot2 =plt.plot(quantiles*100,addedValue)
+
+plt.plot([65], [addedValue[0.65]], 'o')
+
+labels = list(dfComponents)
+labels.append("Added Value Aggregator")
+plot = plot1+plot2
+plt.legend(plot, labels)
 plt.xlabel('Quantiles [%]')
 plt.ylabel('Power [MW]')
 
 #%% CONSTANTS
 
 #Constraints
-TIME_GRANULARITY = 720#h
+TIME_GRANULARITY = 24#h
 TIME_HORIZON = 168#h
 VOLUME_GRANULARITY = 1#MW
 VOLUME_MIN = 1#MW
 
 ACTIVATION_DURATION = 1#h
-UNCERTAINTY = 30 
+UNCERTAINTY = 25
 TIME_QUANTILE = 5 
 
 #Product Characteristics
@@ -101,7 +106,7 @@ FINANCIAL_PENALTY = 120*CAPACITY_REMUNERATION #EUR/MWh/activation
 
 #%% VOLUME ESTIMATION
 
-quantiles = np.linspace(0,1,400)
+quantiles = np.arange(0,1,.0025)
 
 #C1 TIME GRANULARITY------------
 volumes = df[TIME_HORIZON]
@@ -123,18 +128,18 @@ errN = list()
 step = 4
 minbin = round(df[TIME_HORIZON].min()- df[TIME_HORIZON].min()%step)
 maxbin = df[TIME_HORIZON].max()
-fig,axes = plt.subplots(7,4)
+fig,axes = plt.subplots(6,5)
 
 #Iterate over all bins
 for i,x in enumerate(np.arange(minbin,maxbin,step)):
-    indexbin[x] = np.where(np.column_stack((df[TIME_HORIZON]>x,df[TIME_HORIZON]<(x+step))).all(axis=1))[0]
+    indexbin[x] = np.where(np.column_stack((df[TIME_HORIZON]>(x-step*1.5),df[TIME_HORIZON]<(x+step*1.5))).all(axis=1))[0]
     errorbin[x] = df[0][indexbin[x]]-df[TIME_HORIZON][indexbin[x]]
     errSd.append(errorbin[x].std())
     errN.append(len(errorbin[x]))
     
-    ##error density plot + standard deviation per bin
-    #errorbin[x].plot.density(ax = axes[int(i/4),i%4])
-    #axes[int(i/4),i%4].set_title(str(round(errorbin[x].std(),2)))
+    #error density plot + standard deviation per bin
+    errorbin[x].plot.density(ax = axes[int(i/5),i%5])
+    axes[int(i/5),i%5].set_title(str(round(errorbin[x].std(),2)))
     
 #Illustrate standard deviation + amount of sample per bin
 fig,axes = plt.subplots(1,2)
@@ -150,7 +155,6 @@ volumesC1[volumesC1<0]=0
 # VOLUME CONSTRAINT----------------
 
 #volume granularity
-volumesC2 = volumesC1.copy()
 volumesC2 = volumesC1 - volumesC1%VOLUME_GRANULARITY
 
 #volume minimum
@@ -173,14 +177,14 @@ volumesC1.plot(label="C2a Horizon "+str(TIME_HORIZON)+"h"+
 volumesC3.plot(label="C3a Granularity " + str(VOLUME_GRANULARITY)+"MW"+
                "\nC3b Minimum "+str(VOLUME_MIN)+"MW",linestyle = "--")
 
-plt.xlabel('Time quantile [%]')
+plt.xlabel('Time Quantile [%]')
 plt.ylabel('Power [MW]')
 plt.title("Aggregator 130MWp")
 plt.legend()
 
 #Label preferred time quantile
 x = TIME_QUANTILE/100
-y = volumesC3.quantile(x)-VOLUME_GRANULARITY
+y = volumesC3[x]
 plt.plot([x], [y], 'o')
 plt.annotate('Time Quantile ' + str(TIME_QUANTILE) +"% \n"+ str(round(y,2))+ "MW",
             xy=(x,y),
