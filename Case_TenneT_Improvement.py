@@ -171,15 +171,15 @@ plt.axhline(df[0].mean(),label="Unconstrained Real Time")
 
 volumesC0.plot(label="C1 Granularity "+str(TIME_GRANULARITY) +"h",linestyle = ":")
 
-volumesC1.plot(label="C2a Horizon "+str(TIME_HORIZON)+"h"+
-               "\nC2b Uncertainty "+str(UNCERTAINTY)+"%",linestyle = ":")
+volumesC1.plot(label="C2 Horizon "+str(TIME_HORIZON)+"h",linestyle = ":")
 
 volumesC3.plot(label="C3a Granularity " + str(VOLUME_GRANULARITY)+"MW"+
                "\nC3b Minimum "+str(VOLUME_MIN)+"MW",linestyle = "--")
 
 plt.xlabel('Time Quantile [%]')
-plt.ylabel('Power [MW]')
-plt.title("Aggregator 130MWp")
+plt.ylabel('Volume [MW]')
+plt.title("Downward Reserves 130MWp Aggregator\n\n"+
+          "Time total "+str(TIME_TOTAL)+"h, Uncertainty "+str(UNCERTAINTY)+"%, Time quantile "+str(TIME_QUANTILE)+"%")
 plt.legend()
 
 #Label preferred time quantile
