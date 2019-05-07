@@ -46,7 +46,7 @@ solar = solarRaw["RealTime"]*SOLAR_INSTALLED/SOLAR_MONITORED
 agg = wind + solar
 
 #Place data in a dataframe, easy to handle
-df = pd.DataFrame(data={0:agg,4:agg4,24:agg24,168:agg168,8760:agg8760})
+df = pd.DataFrame(data={0:wind,4:wind5,24:wind24,168:wind168,8760:wind8760})
 dfComponents = pd.DataFrame(data={"wind":wind,"solar":solar,"aggregator":agg})
 
 #%% PARAMETERS
@@ -54,10 +54,11 @@ dfComponents = pd.DataFrame(data={"wind":wind,"solar":solar,"aggregator":agg})
 TIME_HORIZON = 24
 TIME_GRANULARITY = 24
 
-VOLUME_GRANULARITY = 2.5
+VOLUME_GRANULARITY = 1
+VOLUME_MIN = 5
 
 UNCERTAINTY = 30
-TIME_QUANTILE = 10
+TIME_QUANTILE = 0
 
 TIME_TOTAL = 168
 TIME_GROUPS = int(TIME_TOTAL/TIME_GRANULARITY)
@@ -65,40 +66,44 @@ TIME_GROUPS = int(TIME_TOTAL/TIME_GRANULARITY)
 #%% PROCESS
 
 plt.close("all")
-plt.plot(np.arange(0,168,0.25),wind[:TIME_TOTAL*4],label = "Unconstrained Production")
 
-# C1 TIME GRANULARITY------------
-volumesC0 = []
-for i in range(0,TIME_GROUPS):
-    volumesC0 = np.concatenate((volumesC0, np.ones(TIME_GRANULARITY)*wind[int(i*4*TIME_GRANULARITY):int((i+1)*4*TIME_GRANULARITY)].quantile(TIME_QUANTILE/100)))
-plt.plot(volumesC0, label = "Time Granularity "+str(TIME_GRANULARITY)+"h")
+# STEP 1 Retrieve a single valued forecast
 
-# C2 TIME HORIZON---------------
-#REMARK: commutative property with time granularity
-#Make a dictionary of indexbins and errorbins
+forecast = wind[:TIME_TOTAL*4]
+plt.plot(np.arange(0,168,0.25), forecast, label = "Unconstrained",linestyle = ":",linewidth=2.0)
+
+## STEP 2 Incorporate level of uncertainty
+
+#2.1 Make a dictionary of errorbins
 indexbin = {}
 errorbin = {}
 step = 4
 minbin = round(df[TIME_HORIZON].min()- df[TIME_HORIZON].min()%step)
 maxbin = df[TIME_HORIZON].max()
-
-#Iterate over all bins
 for i,x in enumerate(np.arange(minbin,maxbin,step)):
     indexbin[x] = np.where(np.column_stack((df[TIME_HORIZON]>(x-step*1.5),df[TIME_HORIZON]<(x+step*1.5))).all(axis=1))[0]
     errorbin[x] = df[0][indexbin[x]]-df[TIME_HORIZON][indexbin[x]]
+    
+# 2.2 Add forecast error
+keys = (forecast-forecast%step).astype("int")
+forecast2 = forecast + [errorbin[key].quantile(UNCERTAINTY/100) for key in keys]
+forecast2[forecast2<0]=0
 
-#add forecast error
-keys = (volumesC0-volumesC0%step).astype("int")
-volumesC1 = volumesC0 + [errorbin[key].quantile(UNCERTAINTY/100) for key in keys]
-volumesC1[volumesC1<0]=0
+plt.plot(np.arange(0,168,0.25), forecast2, label = "Horizon Constrained",linestyle = "-")
 
-plt.plot(volumesC1, label = "Time Horizon " +str(TIME_HORIZON)+"h")
+# STEP 3 Time Constraints
+forecast3 = []
+for i in range(0,TIME_GROUPS):
+    forecast3 = np.concatenate((forecast3, np.ones(TIME_GRANULARITY)*forecast2[int(i*4*TIME_GRANULARITY):int((i+1)*4*TIME_GRANULARITY)].quantile(TIME_QUANTILE/100)))
 
-#C3 VOLUME GRANULARITY------------
-volumesC2 = volumesC1 - volumesC1%VOLUME_GRANULARITY
-plt.plot(volumesC2, label = "Volume Granularity "+str(VOLUME_GRANULARITY)+"MW")
+plt.plot(np.arange(0,168,1), forecast3, label = "Time Constrained",linestyle = ":",linewidth=2.0)
 
+### STEP 4 Volume Constraints
+forecast4 = forecast3 - forecast3%VOLUME_GRANULARITY
+forecast4[forecast4<VOLUME_MIN] = 0
+
+plt.plot(np.arange(0,168,1), forecast4, label = "Volume Constrained",linestyle = "-")
 plt.legend()
 plt.xlabel("Time [h]")
 plt.ylabel("Volume [MW]")
-plt.title("Downward Reserves 100MWp Wind\n\n"+"Time total "+str(TIME_TOTAL)+"h, Uncertainty "+str(UNCERTAINTY)+"%, Time quantile "+str(TIME_QUANTILE)+"%")
+plt.title("Downward Reserves 100MWp Wind\n\n"+"Time total "+str(TIME_TOTAL)+"h")
