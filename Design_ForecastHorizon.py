@@ -112,15 +112,39 @@ for i in (0,1,2):
     axes[i].set_title(titles[i])
     axes[i].legend()
     
+#%% WIND PLOTS
+
+fig,axes = plt.subplots(1,2)
+fig.suptitle("Downward Reserves 100MWp Wind")
+             
+#aggdata.plot.density(ax = axes[0])
+#axes[0].set_xlabel("$\Delta$P [MW]")
+#axes[0].set_title("Error Density Plot")
+#axes[0].set_xlim(-50,50)
+
+axes[1].plot(x*100,wdata.quantile(x))
+axes[1].set_title("Error Quantile Plot")
+axes[1].set_xlabel("Uncertainty [%]")
+axes[1].set_ylabel("$\Delta$P [MW]")
+axes[1].legend(('4h','24h','168h','8760h'))
+
+UNCERTAINTY = 30
+#axes[0].plot(horizons,aggregatorSd,label="$\sigma_{error}$")
+axes[0].plot(horizons,np.abs(wdata.quantile(UNCERTAINTY/100)),label="Uncertainty "+str(UNCERTAINTY)+"%")
+axes[0].set_ylabel("Lost Volume [MW]")
+axes[0].set_xlabel("Forecast Horizon [h]")
+axes[0].set_title("Lost Volume By Forecast Horizon")
+axes[0].legend()
+
 #%% AGGREGATOR PLOTS
 
-fig,axes = plt.subplots(1,3)
+fig,axes = plt.subplots(1,2)
 fig.suptitle("Aggregator 130MWp")
              
-aggdata.plot.density(ax = axes[0])
-axes[0].set_xlabel("$\Delta$P [MW]")
-axes[0].set_title("Error Density Plot")
-axes[0].set_xlim(-50,50)
+#aggdata.plot.density(ax = axes[0])
+#axes[0].set_xlabel("$\Delta$P [MW]")
+#axes[0].set_title("Error Density Plot")
+#axes[0].set_xlim(-50,50)
 
 axes[1].plot(x*100,aggdata.quantile(x))
 axes[1].set_title("Error Quantile Plot")
@@ -128,12 +152,12 @@ axes[1].set_xlabel("Uncertainty [%]")
 axes[1].set_ylabel("$\Delta$P [MW]")
 axes[1].legend((4,24,168,8760))
 
-axes[2].plot(horizons,aggregatorSd,label="$\sigma_{error}$")
-axes[2].plot(horizons,np.abs(aggdata.quantile(quantileSd)),label="$\sigma_{quantile}$")
-axes[2].set_ylabel("Lost Volume [MW]")
-axes[2].set_xlabel("Time Horizon [h]")
-axes[2].set_title("Lost Volume By Time Horizon\nUncertainty= "+str(round(quantileSd*100,2))+"%")
-axes[2].legend()
+UNCERTAINTY = 30
+#axes[0].plot(horizons,aggregatorSd,label="$\sigma_{error}$")
+axes[0].plot(horizons,np.abs(aggdata.quantile(UNCERTAINTY/100)))
+axes[0].set_ylabel("Lost Volume [MW]")
+axes[0].set_xlabel("Time Horizon [h]")
+axes[0].set_title("Lost Volume By Time Horizon\nUncertainty= "+str(UNCERTAINTY)+"%")
     
 #%% DESCRIPTIVE STATISTICS
 
