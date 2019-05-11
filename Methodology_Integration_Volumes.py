@@ -51,11 +51,11 @@ dfComponents = pd.DataFrame(data={"wind":wind,"solar":solar,"aggregator":agg})
 
 #%% PARAMETERS
 
-TIME_HORIZON = 24
-TIME_GRANULARITY = 24
+TIME_HORIZON = 4
+TIME_GRANULARITY = 4
 
-VOLUME_GRANULARITY = 1
-VOLUME_MIN = 5
+VOLUME_GRANULARITY = 0.01
+VOLUME_MIN = 0.01
 
 UNCERTAINTY = 30
 TIME_QUANTILE = 0
@@ -94,15 +94,15 @@ plt.plot(np.arange(0,168,0.25), forecast2, label = "Horizon Constrained",linesty
 # STEP 3 Time Constraints
 forecast3 = []
 for i in range(0,TIME_GROUPS):
-    forecast3 = np.concatenate((forecast3, np.ones(TIME_GRANULARITY)*forecast2[int(i*4*TIME_GRANULARITY):int((i+1)*4*TIME_GRANULARITY)].quantile(TIME_QUANTILE/100)))
+    forecast3 = np.concatenate((forecast3, np.ones(int(TIME_GRANULARITY*4))*forecast2[int(i*4*TIME_GRANULARITY):int((i+1)*4*TIME_GRANULARITY)].quantile(TIME_QUANTILE/100)))
 
-plt.plot(np.arange(0,168,1), forecast3, label = "Time Constrained",linestyle = ":",linewidth=2.0)
+plt.plot(np.arange(0,168,0.25), forecast3, label = "Time Constrained",linestyle = ":",linewidth=2.0)
 
 ### STEP 4 Volume Constraints
 forecast4 = forecast3 - forecast3%VOLUME_GRANULARITY
 forecast4[forecast4<VOLUME_MIN] = 0
 
-plt.plot(np.arange(0,168,1), forecast4, label = "Volume Constrained",linestyle = "-")
+plt.plot(np.arange(0,168,0.25), forecast4, label = "Volume Constrained",linestyle = "-")
 plt.legend()
 plt.xlabel("Time [h]")
 plt.ylabel("Volume [MW]")
@@ -110,39 +110,92 @@ plt.title("Downward Reserves 100MWp Wind\n\n"+"Time total "+str(TIME_TOTAL)+"h")
 
 #%% RELIABILITY
 
-#writing a piece of code for one time period... To be checked.
-
-rel = .99
-i = 5
-volumePart = forecast[int(i*4*TIME_GRANULARITY):int((i+1)*4*TIME_GRANULARITY)]
-
-guess = [0,1]
-count = 0
-rel_new = 1
-
-while abs(rel_new - rel) >.0003 and count <10:
+#Function to calculate the volume based on a given interval and a given reliability
+def calculateVolume(interval,rel=0.99):
+    """
+    In: interval
+    Out: volume
+    """
     
-    #Take an initial guess for the correct volume
-    guess_new = (guess[0]+guess[1])/2
-    volGuess = volumePart.quantile(1-rel) + errorbin[volumePart.quantile(1-rel)-volumePart.quantile(1-rel)%step].quantile(guess_new)
+    #Initialize Parameters
+    uncertaintyGuess = [0,1]
+    count = 0
+    rel_new = -1
+    volRef = interval.quantile(1-rel)
+    volRefError = errorbin[volRef-volRef%step]
+    uncertaintyGuessNew = -1
+    volGuess = -1
+    difference = -1
+    
+    #Keep iterating while 
+    #1 reliability is too far away
+    #2 counter does not exceed 10 iterations
+    while abs(rel_new - rel) >.001 and count <10:
+        
+        #Take a volume guess
+        uncertaintyGuessNew = sum(uncertaintyGuess)/2
+        volGuess =  volRef + volRefError.quantile(uncertaintyGuessNew)
+    
+        #Calculate uncertainty for each point
+        uncertainty = np.zeros(int(TIME_GRANULARITY*4))
+        for i,vol in enumerate(interval):
+            difference = vol - volGuess
+            values = errorbin[vol-vol%step]
+            uncertainty[i] = sum(i<-difference for i in values)/len(values)
+        
+        #Take mean of uncertainties
+        rel_new = 1-uncertainty.mean()
+        
+        #Check reliability and corresponding uncertainty
+        #print("rel_new",round(rel_new,4),"rel",rel,"uncertainty",uncertaintyGuessNew)
+        
+        #Iterate
+        if rel_new > rel:
+            uncertaintyGuess[0] = uncertaintyGuessNew
+        else:
+            uncertaintyGuess[1] = uncertaintyGuessNew
+              
+        #Increase counter
+        count+=1   
+        
+    return volGuess
 
-    #Calculate with this guess the uncertainty for each point
-    uncertainty = np.zeros(TIME_GRANULARITY*4)
-    for i,vol in enumerate(volumePart):
-        difference = vol - volGuess
-        values = errorbin[vol-vol%step]
-        uncertainty[i] = sum(i<-difference for i in values)/len(values)
-    
-    #Take mean of uncertainties as the reliability
-    rel_new = 1-uncertainty.mean()
-    
-    print("rel_new",round(rel_new,4),"rel",rel,"uncertainty",guess_new)
-    
-    #Come up with a better guess
-    if rel_new > rel:
-        guess[0] = guess_new
-    else:
-        guess[1] = guess_new
-          
-    #Increase the counter
-    count+=1     
+#Selecting Reliability
+
+
+
+#get volume 
+plt.close("all")
+plt.plot(np.arange(0,168,0.25),forecast)
+
+rel= 0.0
+forecast_ = []
+for i in range(0,TIME_GROUPS):
+    interval = forecast[int(i*4*TIME_GRANULARITY):int((i+1)*4*TIME_GRANULARITY)]
+    volume = calculateVolume(interval,rel)
+    forecast_ = np.concatenate((forecast_, np.ones(int(TIME_GRANULARITY*4))*volume))   
+plt.plot(np.arange(0,168,0.25),forecast_)
+
+rel = 1.0
+forecast_ = []
+for i in range(0,TIME_GROUPS):
+    interval = forecast[int(i*4*TIME_GRANULARITY):int((i+1)*4*TIME_GRANULARITY)]
+    volume = calculateVolume(interval,rel)
+    forecast_ = np.concatenate((forecast_, np.ones(int(TIME_GRANULARITY*4))*volume))
+plt.plot(np.arange(0,168,0.25),forecast_)
+
+rel = 0.8
+forecast_ = []
+for i in range(0,TIME_GROUPS):
+    interval = forecast[int(i*4*TIME_GRANULARITY):int((i+1)*4*TIME_GRANULARITY)]
+    volume = calculateVolume(interval,rel)
+    forecast_ = np.concatenate((forecast_, np.ones(int(TIME_GRANULARITY*4))*volume))
+plt.plot(np.arange(0,168,0.25),forecast_)
+
+rel = 0.2
+forecast_ = []
+for i in range(0,TIME_GROUPS):
+    interval = forecast[int(i*4*TIME_GRANULARITY):int((i+1)*4*TIME_GRANULARITY)]
+    volume = calculateVolume(interval,rel)
+    forecast_ = np.concatenate((forecast_, np.ones(int(TIME_GRANULARITY*4))*volume))
+plt.plot(np.arange(0,168,0.25),forecast_)
