@@ -107,3 +107,42 @@ plt.legend()
 plt.xlabel("Time [h]")
 plt.ylabel("Volume [MW]")
 plt.title("Downward Reserves 100MWp Wind\n\n"+"Time total "+str(TIME_TOTAL)+"h")
+
+#%% RELIABILITY
+
+#writing a piece of code for one time period... To be checked.
+
+rel = .99
+i = 5
+volumePart = forecast[int(i*4*TIME_GRANULARITY):int((i+1)*4*TIME_GRANULARITY)]
+
+guess = [0,1]
+count = 0
+rel_new = 1
+
+while abs(rel_new - rel) >.0003 and count <10:
+    
+    #Take an initial guess for the correct volume
+    guess_new = (guess[0]+guess[1])/2
+    volGuess = volumePart.quantile(1-rel) + errorbin[volumePart.quantile(1-rel)-volumePart.quantile(1-rel)%step].quantile(guess_new)
+
+    #Calculate with this guess the uncertainty for each point
+    uncertainty = np.zeros(TIME_GRANULARITY*4)
+    for i,vol in enumerate(volumePart):
+        difference = vol - volGuess
+        values = errorbin[vol-vol%step]
+        uncertainty[i] = sum(i<-difference for i in values)/len(values)
+    
+    #Take mean of uncertainties as the reliability
+    rel_new = 1-uncertainty.mean()
+    
+    print("rel_new",round(rel_new,4),"rel",rel,"uncertainty",guess_new)
+    
+    #Come up with a better guess
+    if rel_new > rel:
+        guess[0] = guess_new
+    else:
+        guess[1] = guess_new
+          
+    #Increase the counter
+    count+=1     

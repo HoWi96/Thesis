@@ -65,7 +65,7 @@ plt.xlabel("Power [MW]")
 #visualisation Quantile Function
 plt.figure()
 
-quantiles = np.arange(0,1.05,.05)
+quantiles = np.arange(0,1.01,.01)
 
 plot1 = plt.plot(quantiles*100,dfComponents.quantile(quantiles))
 addedValue = dfComponents["aggregator"].quantile(quantiles) - dfComponents["solar"].quantile(quantiles) - dfComponents["wind"].quantile(quantiles)
@@ -80,7 +80,7 @@ plt.legend(plot, labels)
 plt.xlabel('Quantiles [%]')
 plt.ylabel('Power [MW]')
 
-#%% CONSTANTS
+#%% CONSTANTS VOLUMES
 
 #Constraints
 TIME_GRANULARITY = 24#h
@@ -93,16 +93,8 @@ UNCERTAINTY = 25
 TIME_QUANTILE = 5 
 
 #Product Characteristics
-TIME_DURATION = 24#h
-ACTIVATIONS = 2/12 #activations/M
 TIME_TOTAL = 30*24#h
 TIME_GROUPS = int(TIME_TOTAL/TIME_GRANULARITY)
-
-#Remuneration & Penalisation
-EPEX_SPOT_PRICE = 70 #EUR/MW
-ACTIVATION_REMUNERATION = max(250-EPEX_SPOT_PRICE,0) #EUR/MWh/activation
-CAPACITY_REMUNERATION = 6 #EUR/MW/h
-FINANCIAL_PENALTY = 120*CAPACITY_REMUNERATION #EUR/MWh/activation
 
 #%% VOLUME ESTIMATION
 
@@ -196,12 +188,21 @@ plt.annotate('Time Quantile ' + str(TIME_QUANTILE) +"% \n"+ str(round(y,2))+ "MW
             )
 plt.show()
 
-#%% VALUE ESTIMATION TODO
+#%% CONSTANTS FINANCIALS 
 
-#Proposal penalty mechanism
+#Activation Frequency
+TIME_DURATION = 24#h
+ACTIVATIONS = 2/12 #activations/M
 
-#Reasonable reliabilities
-#Assumption: ignore unreasonable reliabilities
+#financials
+EPEX_SPOT_PRICE = 70 #EUR/MW
+CAPACITY_REMUNERATION = 6 #EUR/MW/h
+ACTIVATION_REMUNERATION = max(250-EPEX_SPOT_PRICE,0) #EUR/MWh/activation
+ACTIVATION_PENALTY = 50*120*CAPACITY_REMUNERATION #EUR/MWh/activation
+
+
+#%% VALUE ESTIMATION
+
 quantiles = quantiles #np.array([0,0.003,0.01,0.05,0.10,0.15,0.20,0.50]) 
 volumes = volumesC3
 
@@ -209,24 +210,26 @@ volumes = volumesC3
 #Assumption: ignore reported non-availability
 capacityRemuneration= TIME_TOTAL*CAPACITY_REMUNERATION*volumes
 activationRemuneration = ACTIVATION_DURATION*ACTIVATION_REMUNERATION*volumes
-activationPenalty = ACTIVATION_DURATION*FINANCIAL_PENALTY*volumes
-#revenues1 = capacityRemuneration + E[activationRemuneration] - E[finacialPenalty]
-revenues1 = capacityRemuneration + ACTIVATIONS*(activationRemuneration.multiply((1-quantiles),0) - activationPenalty.multiply(quantiles,0))
+activationPenalty = ACTIVATION_DURATION*ACTIVATION_PENALTY*volumes
+
+#revenues = capacityRemuneration + E[activationRemuneration] - E[finacialPenalty]
+#Binomial distribution of succesful activations with chance selected reliability
+revenues = capacityRemuneration + ACTIVATIONS*(activationRemuneration.multiply((1-quantiles),0) - activationPenalty.multiply(quantiles,0))
 
 #Components Expected Revenues Aggregator
 plt.figure()
 (capacityRemuneration/10**3).plot(label = "capacity remuneration")
 (ACTIVATIONS*activationRemuneration.multiply((1-quantiles),0)/10**3).plot(label = "activation remuneration")
 (ACTIVATIONS*activationPenalty.multiply(quantiles,0)/10**3).plot(label = "financial penalty")
-(revenues1/10**3).plot(label = "Expected revenues")
+(revenues/10**3).plot(label = "Expected revenues")
 plt.xlabel("Quantiles")
 plt.ylabel("Revenues [k€/Month]")
 plt.legend()
 plt.show()
 
 #RECOMMENDATION ------------------
-x = revenues1.idxmax()
-y = revenues1[x]/10**3
+x = revenues.idxmax()
+y = revenues[x]/10**3
 
 plt.plot([x], [y], 'o')
 plt.annotate('financial optimum '+str(round(y,2))+"k€/M",
