@@ -1,8 +1,7 @@
 # -*- coding: utf-8 -*-
 """
-Created on Sun May  5 11:03:30 2019
-
-@author: user
+@date: 12/05/2019
+@author: Holger
 """
 
 #%% SET_UP
@@ -47,110 +46,44 @@ agg = wind + solar
 
 #Place data in a dataframe, easy to handle
 df = pd.DataFrame(data={0:wind,4:wind5,24:wind24,168:wind168,8760:wind8760})
-dfComponents = pd.DataFrame(data={"wind":wind,"solar":solar,"aggregator":agg})
-
-#%% PARAMETERS
-
-TIME_HORIZON = 4
-TIME_GRANULARITY = 4
-
-VOLUME_GRANULARITY = 0.01
-VOLUME_MIN = 0.01
-
-UNCERTAINTY = 30
-TIME_QUANTILE = 0
-
-TIME_TOTAL = 168
-TIME_GROUPS = int(TIME_TOTAL/TIME_GRANULARITY)
-
-#%% PROCESS
-
-plt.close("all")
-
-# STEP 1 Retrieve a single valued forecast
-
-forecast = wind[:TIME_TOTAL*4]
-plt.plot(np.arange(0,168,0.25), forecast, label = "Unconstrained",linestyle = ":",linewidth=2.0)
-
-## STEP 2 Incorporate level of uncertainty
-
-#2.1 Make a dictionary of errorbins
-indexbin = {}
-errorbin = {}
-step = 4
-minbin = round(df[TIME_HORIZON].min()- df[TIME_HORIZON].min()%step)
-maxbin = df[TIME_HORIZON].max()
-for i,x in enumerate(np.arange(minbin,maxbin,step)):
-    indexbin[x] = np.where(np.column_stack((df[TIME_HORIZON]>(x-step*1.5),df[TIME_HORIZON]<(x+step*1.5))).all(axis=1))[0]
-    errorbin[x] = df[0][indexbin[x]]-df[TIME_HORIZON][indexbin[x]]
-    
-# 2.2 Add forecast error
-keys = (forecast-forecast%step).astype("int")
-forecast2 = forecast + [errorbin[key].quantile(UNCERTAINTY/100) for key in keys]
-forecast2[forecast2<0]=0
-
-plt.plot(np.arange(0,168,0.25), forecast2, label = "Horizon Constrained",linestyle = "-")
-
-# STEP 3 Time Constraints
-forecast3 = []
-for i in range(0,TIME_GROUPS):
-    forecast3 = np.concatenate((forecast3, np.ones(int(TIME_GRANULARITY*4))*forecast2[int(i*4*TIME_GRANULARITY):int((i+1)*4*TIME_GRANULARITY)].quantile(TIME_QUANTILE/100)))
-
-plt.plot(np.arange(0,168,0.25), forecast3, label = "Time Constrained",linestyle = ":",linewidth=2.0)
-
-### STEP 4 Volume Constraints
-forecast4 = forecast3 - forecast3%VOLUME_GRANULARITY
-forecast4[forecast4<VOLUME_MIN] = 0
-
-plt.plot(np.arange(0,168,0.25), forecast4, label = "Volume Constrained",linestyle = "-")
-plt.legend()
-plt.xlabel("Time [h]")
-plt.ylabel("Volume [MW]")
-plt.title("Downward Reserves 100MWp Wind\n\n"+"Time total "+str(TIME_TOTAL)+"h")
 
 #%% RELIABILITY
 
-#Function to calculate the volume based on a given interval and a given reliability
-def calculateVolume(interval,rel=0.99):
-    """
-    In: interval
-    Out: volume
-    """
-    
+#Volume Reliability Estimation Function
+#Output: (1) volume 
+#Input: (1) interval (2) reliability
+def calculateVolume(interval,errorbin,step,rel=0.99):
+
     #Initialize Parameters
     uncertaintyGuess = [0,1]
     count = 0
-    rel_new = -1
+    rel_eff = -1
     volRef = interval.quantile(1-rel)
     volRefError = errorbin[volRef-volRef%step]
     uncertaintyGuessNew = -1
     volGuess = -1
     difference = -1
+    intervalLength = len(interval)
     
     #Keep iterating while 
     #1 reliability is too far away
     #2 counter does not exceed 10 iterations
-    while abs(rel_new - rel) >.001 and count <10:
+    while abs(rel_eff - rel) >.001 and count <10:
         
-        #Take a volume guess
+        #Calculate effective volume
         uncertaintyGuessNew = sum(uncertaintyGuess)/2
         volGuess =  volRef + volRefError.quantile(uncertaintyGuessNew)
     
-        #Calculate uncertainty for each point
-        uncertainty = np.zeros(int(TIME_GRANULARITY*4))
+        #calculate effective reliability
+        uncertainty = np.zeros(intervalLength)
         for i,vol in enumerate(interval):
             difference = vol - volGuess
             values = errorbin[vol-vol%step]
             uncertainty[i] = sum(i<-difference for i in values)/len(values)
-        
-        #Take mean of uncertainties
-        rel_new = 1-uncertainty.mean()
-        
-        #Check reliability and corresponding uncertainty
-        #print("rel_new",round(rel_new,4),"rel",rel,"uncertainty",uncertaintyGuessNew)
+        rel_eff = 1-uncertainty.mean()
         
         #Iterate
-        if rel_new > rel:
+        if rel_eff > rel:
             uncertaintyGuess[0] = uncertaintyGuessNew
         else:
             uncertaintyGuess[1] = uncertaintyGuessNew
@@ -160,42 +93,73 @@ def calculateVolume(interval,rel=0.99):
         
     return volGuess
 
-#Selecting Reliability
+#%% PROCESS
+    
+#Volume Bidding Function Given Market Constraints
+#OUTPUT: (1) Bidded volumes (2) Illustration bidded volumes
+#INPUT: (1) All Market Parameters
+def bidVolume(df, TIME_TOTAL,TIME_HORIZON, TIME_GRANULARITY, VOLUME_GRANULARITY, VOLUME_MIN,RELIABILITY):
 
+    #Dictionary with bins of errors
+    indexbin = {}
+    errorbin = {}
+    step = 4
+    minbin = round(df[TIME_HORIZON].min()- df[TIME_HORIZON].min()%step)
+    maxbin = df[TIME_HORIZON].max()
+    for i,x in enumerate(np.arange(minbin,maxbin,step)):
+        indexbin[x] = np.where(np.column_stack((df[TIME_HORIZON]>(x-step*1.5),df[TIME_HORIZON]<(x+step*1.5))).all(axis=1))[0]
+        errorbin[x] = df[0][indexbin[x]]-df[TIME_HORIZON][indexbin[x]]
+        
+    #volume = f(reliability,interval)
+    bid = []
+    for i in range(0,int(TIME_TOTAL/TIME_GRANULARITY)):
+        interval = df[TIME_HORIZON][int(i*4*TIME_GRANULARITY):int((i+1)*4*TIME_GRANULARITY)]
+        volume = calculateVolume(interval,errorbin,step,RELIABILITY)
+        if volume < 0: 
+            volume = 0
+        bid = np.concatenate((bid, np.ones(int(TIME_GRANULARITY*4))*volume))   
+    
+    #Adjust for volume minimum
+    bid2 = bid - bid%VOLUME_GRANULARITY
+    
+    #Adjust for volume minimum
+    bid2[bid2<VOLUME_MIN] = 0
+    
+    #Illustrate bidding
+    labelString =  ( str(TIME_HORIZON) + "h-Ahead,\n"
+                   + str(TIME_GRANULARITY) + "h Resolution,\n"
+                   + str(VOLUME_GRANULARITY) + "MW Resolution,\n"
+                   + str(VOLUME_MIN) + "MW Minimum,\n"
+                   + str(RELIABILITY*100) + "% Reliable")
+    
+    plt.plot(np.arange(0,TIME_TOTAL,0.25),
+             bid2, 
+             label = labelString,
+             linestyle = "-", 
+             linewidth=1.0)
+    
+    #Return bidding
+    return bid2
 
+#%% TESTS
 
-#get volume 
-plt.close("all")
-plt.plot(np.arange(0,168,0.25),forecast)
+plt.close("all")    
 
-rel= 0.0
-forecast_ = []
-for i in range(0,TIME_GROUPS):
-    interval = forecast[int(i*4*TIME_GRANULARITY):int((i+1)*4*TIME_GRANULARITY)]
-    volume = calculateVolume(interval,rel)
-    forecast_ = np.concatenate((forecast_, np.ones(int(TIME_GRANULARITY*4))*volume))   
-plt.plot(np.arange(0,168,0.25),forecast_)
+## REFERENCE PRODUCTION
+#realTime = df[0][:TIME_TOTAL*4]
+#plt.plot(np.arange(0,TIME_TOTAL,0.25), realTime, label = "Real-Time Production",linestyle = "-",linewidth=2.0)
+#
+## REFERENCE FORECAST
+#TIME_HORIZON = 24
+#forecast = df[TIME_HORIZON][:TIME_TOTAL*4]
+#plt.plot(np.arange(0,TIME_TOTAL,0.25), forecast, label = str(TIME_HORIZON)+"h-ahead Forecast",linestyle = "--")
+ 
+#SPECIFICATIONS
+TIME_TOTAL = 168
+volume = bidVolume(df, TIME_TOTAL, 0, 0.25, 0.01, 0.01, 0.80)
+volume = bidVolume(df, TIME_TOTAL, 24, 4, 1, 1, 0.80)
 
-rel = 1.0
-forecast_ = []
-for i in range(0,TIME_GROUPS):
-    interval = forecast[int(i*4*TIME_GRANULARITY):int((i+1)*4*TIME_GRANULARITY)]
-    volume = calculateVolume(interval,rel)
-    forecast_ = np.concatenate((forecast_, np.ones(int(TIME_GRANULARITY*4))*volume))
-plt.plot(np.arange(0,168,0.25),forecast_)
-
-rel = 0.8
-forecast_ = []
-for i in range(0,TIME_GROUPS):
-    interval = forecast[int(i*4*TIME_GRANULARITY):int((i+1)*4*TIME_GRANULARITY)]
-    volume = calculateVolume(interval,rel)
-    forecast_ = np.concatenate((forecast_, np.ones(int(TIME_GRANULARITY*4))*volume))
-plt.plot(np.arange(0,168,0.25),forecast_)
-
-rel = 0.2
-forecast_ = []
-for i in range(0,TIME_GROUPS):
-    interval = forecast[int(i*4*TIME_GRANULARITY):int((i+1)*4*TIME_GRANULARITY)]
-    volume = calculateVolume(interval,rel)
-    forecast_ = np.concatenate((forecast_, np.ones(int(TIME_GRANULARITY*4))*volume))
-plt.plot(np.arange(0,168,0.25),forecast_)
+plt.legend()
+plt.xlabel("Time [h]")
+plt.ylabel("Volume [MW]")
+plt.title("Downward Reserves 100MWp Wind\n\n"+"Time total "+str(TIME_TOTAL)+"h")
