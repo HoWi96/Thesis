@@ -84,7 +84,7 @@ plt.ylabel('Power [MW]')
 
 #Constraints
 TIME_GRANULARITY = 24#h
-TIME_HORIZON = 168#h
+TIME_HORIZON = 24#h
 VOLUME_GRANULARITY = 1#MW
 VOLUME_MIN = 1#MW
 
@@ -120,7 +120,7 @@ errN = list()
 step = 4
 minbin = round(df[TIME_HORIZON].min()- df[TIME_HORIZON].min()%step)
 maxbin = df[TIME_HORIZON].max()
-fig,axes = plt.subplots(3,4)
+fig,axes = plt.subplots(5,5)
 
 #Iterate over all bins
 for i,x in enumerate(np.arange(minbin,maxbin,step)):
@@ -129,9 +129,10 @@ for i,x in enumerate(np.arange(minbin,maxbin,step)):
     errSd.append(errorbin[x].std())
     errN.append(len(errorbin[x]))
     
-    #error density plot + standard deviation per bin
-    errorbin[x].plot.density(ax = axes[int(i/4),i%4])
-    axes[int(i/4),i%4].set_title("Error bin of " + str(x) + "MW")
+    if i !=25:
+        #error density plot + standard deviation per bin
+        errorbin[x].plot.density(ax = axes[int(i/5),i%5])
+        axes[int(i/5),i%5].set_title("Error bin of " + str(x) + "MW")
     
 #Illustrate standard deviation + amount of sample per bin
 fig,axes = plt.subplots(1,2)

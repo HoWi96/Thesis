@@ -126,7 +126,7 @@ def bidVolume(df, TIME_TOTAL,TIME_HORIZON, TIME_GRANULARITY, VOLUME_GRANULARITY,
     bid2[bid2<VOLUME_MIN] = 0
     
     #Illustrate bidding
-    labelString =  ( str(TIME_HORIZON) + "h-Ahead,\n"
+    labelString =  ( str(TIME_HORIZON) + "h-Ahead Forecast,\n"
                    + str(TIME_GRANULARITY) + "h Resolution,\n"
                    + str(VOLUME_GRANULARITY) + "MW Resolution,\n"
                    + str(VOLUME_MIN) + "MW Minimum,\n"
@@ -136,7 +136,7 @@ def bidVolume(df, TIME_TOTAL,TIME_HORIZON, TIME_GRANULARITY, VOLUME_GRANULARITY,
              bid2, 
              label = labelString,
              linestyle = "-", 
-             linewidth=1.0)
+             linewidth=2.5)
     
     #Return bidding
     return bid2
@@ -145,21 +145,24 @@ def bidVolume(df, TIME_TOTAL,TIME_HORIZON, TIME_GRANULARITY, VOLUME_GRANULARITY,
 
 plt.close("all")    
 
-## REFERENCE PRODUCTION
-#realTime = df[0][:TIME_TOTAL*4]
-#plt.plot(np.arange(0,TIME_TOTAL,0.25), realTime, label = "Real-Time Production",linestyle = "-",linewidth=2.0)
-#
-## REFERENCE FORECAST
-#TIME_HORIZON = 24
-#forecast = df[TIME_HORIZON][:TIME_TOTAL*4]
-#plt.plot(np.arange(0,TIME_TOTAL,0.25), forecast, label = str(TIME_HORIZON)+"h-ahead Forecast",linestyle = "--")
- 
-#SPECIFICATIONS
 TIME_TOTAL = 168
-volume = bidVolume(df, TIME_TOTAL, 0, 0.25, 0.01, 0.01, 0.80)
-volume = bidVolume(df, TIME_TOTAL, 24, 4, 1, 1, 0.80)
+
+# REFERENCE PRODUCTION
+realTime = df[0][:TIME_TOTAL*4]
+plt.plot(np.arange(0,TIME_TOTAL,0.25), realTime, label = "Real-Time Production",linestyle = ":",linewidth=2.5)
+
+# REFERENCE FORECAST
+TIME_HORIZON = 24
+forecast = df[TIME_HORIZON][:TIME_TOTAL*4]
+plt.plot(np.arange(0,TIME_TOTAL,0.25), forecast, label = str(TIME_HORIZON)+"h-Ahead Forecast",linestyle = "--",linewidth=2.5)
+
+#SPECIFICATIONS
+#volume = bidVolume(df, TIME_TOTAL, 24, 0.25, 0.01, 0.01, 0.90)
+#volume = bidVolume(df, TIME_TOTAL, 24, 4.00, 0.01, 0.01, 0.90)
+#volume = bidVolume(df, TIME_TOTAL, 24, 4.00, 1, 5, 0.90)
 
 plt.legend()
 plt.xlabel("Time [h]")
 plt.ylabel("Volume [MW]")
-plt.title("Downward Reserves 100MWp Wind\n\n"+"Time total "+str(TIME_TOTAL)+"h")
+plt.ylim((0,100))
+plt.title("Downward Reserves 100MWp Wind\n\n"+"Time Total "+str(TIME_TOTAL)+"h")
