@@ -10,7 +10,7 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 
-#%% DATA PREPROCESSING
+#%% PREPROCESS DATA
 
 solarRaw = pd.read_csv("Data/SolarForecastJune2017.csv")
 windRaw = pd.read_csv("Data/WindForecastJune2017.csv")
