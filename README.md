@@ -1,4 +1,8 @@
 # Thesis
-Integrating uncertain sources of flexibility in the reserve market
+Assessing uncertain sources of flexibility
+Integrating uncertain sources of flexibility
+Facilitating uncertain sources of flexibility
 
-I made my email address private.
+- Holger Willems
+-- Actility 
+-- KU Leuven
