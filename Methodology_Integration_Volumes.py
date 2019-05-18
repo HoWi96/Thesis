@@ -158,8 +158,8 @@ plt.plot(np.arange(0,TIME_TOTAL,0.25), forecast, label = str(TIME_HORIZON)+"h-Ah
 
 #SPECIFICATIONS
 #volume = bidVolume(df, TIME_TOTAL, 24, 0.25, 0.01, 0.01, 0.90)
-#volume = bidVolume(df, TIME_TOTAL, 24, 4.00, 0.01, 0.01, 0.90)
-#volume = bidVolume(df, TIME_TOTAL, 24, 4.00, 1, 5, 0.90)
+#volume = bidVolume(df, TIME_TOTAL, 24, 12.00, 0.01, 0.01, 0.90)
+volume = bidVolume(df, TIME_TOTAL, 24, 12.00, 1, 5, 0.90)
 
 plt.legend()
 plt.xlabel("Time [h]")

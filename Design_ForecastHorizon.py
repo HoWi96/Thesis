@@ -122,15 +122,15 @@ fig.suptitle("Downward Reserves 100MWp Wind")
 #axes[0].set_title("Error Density Plot")
 #axes[0].set_xlim(-50,50)
 
-axes[1].plot(x*100,wdata.quantile(x))
+axes[1].plot(100-x*100,wdata.quantile(x))
 axes[1].set_title("Error Quantile Plot")
-axes[1].set_xlabel("Uncertainty [%]")
+axes[1].set_xlabel("Reliability [%]")
 axes[1].set_ylabel("$\Delta$P [MW]")
 axes[1].legend(('4h','24h','168h','8760h'))
 
-UNCERTAINTY = 30
+RELIABILITY = .90
 #axes[0].plot(horizons,aggregatorSd,label="$\sigma_{error}$")
-axes[0].plot(horizons,np.abs(wdata.quantile(UNCERTAINTY/100)),label="Uncertainty "+str(UNCERTAINTY)+"%")
+axes[0].plot(horizons,np.abs(wdata.quantile(1-RELIABILITY)),label="Reliability "+str(RELIABILITY*100)+"%")
 axes[0].set_ylabel("Lost Volume [MW]")
 axes[0].set_xlabel("Forecast Horizon [h]")
 axes[0].set_title("Lost Volume By Forecast Horizon")

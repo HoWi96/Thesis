@@ -53,17 +53,17 @@ axes[1].fill_between(time,np.where(solar>10, solar-10, 0),0,color = "orange",alp
 
 
 axes[2].fill_between(time,100,demand,color="orange",label = "Downward Flexibility",alpha = 0.1)
-axes[2].plot(time,demand,label = "Real-Time Consumption",color = "blue")
+axes[2].plot(time,demand,label = "Effective Real-Time Consumption",color = "blue")
 axes[2].fill_between(time,30,demand,color="blue",label = "Upward Flexibility",alpha = 0.1)
 axes[2].fill_between(time,30,0,color="green",label = "Shedding Limit (30MW)",alpha = 0.1)
 
 #Annotations
-titles = ["Flexibility Wind 100MWp","Flexibility Solar 100MWp","Flexibility Demand 100MWp"]
+titles = ["(a) Flexibility Wind 100MWp","(b) Flexibility Solar PV 100MWp","(c) Flexibility Demand Response 100MWp"]
 
 for i in (0,1,2):
     axes[i].set_title(titles[i])
     axes[i].set_ylim(0,100)
     axes[i].set_ylabel("Volume [MW]")
     axes[i].set_xlabel("Time [h]")
-    axes[i].legend(("Real-Time Production","Curtailed Real-Time Production","Upward Flexibility (10MW)","Downward Flexibility"))
+    axes[i].legend(("Potential Real-Time Generation","Effective Real-Time Generation","Upward Flexibility (10MW)","Downward Flexibility"))
 axes[2].legend()

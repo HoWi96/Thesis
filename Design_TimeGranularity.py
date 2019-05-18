@@ -28,7 +28,7 @@ df = pd.DataFrame(data={"wind":wind,"solar":solar,"agg":agg})
 #%% PROCESS DATA
 plt.close("all")    
 
-TIME_QUANTILE = 0 #round(norm.cdf(2)*100,2)
+TIME_QUANTILE = 10 #round(norm.cdf(2)*100,2)
 #TIME_QUANTILE = 84.13 #round(norm.cdf(1)*100,2)
 TIME_TOTAL = 720.#h
 TIME_GRANULARITY = np.array([.25,.5,1,2,3,4,5,6,8,9,10,12,15,16,18,20,24,30,40,48,50,60,72,80,90,120,144,180])#h
@@ -46,7 +46,7 @@ volumedf = pd.DataFrame(index = TIME_GRANULARITY,
                      "solar":volume[:,1],
                      "agg":volume[:,2]})
     
-(volumedf["wind"].max() - volumedf["wind"]).plot(label = "Time Quantile "+str(TIME_QUANTILE)+"%" )
+(volumedf["wind"].max() - volumedf["wind"]).plot(label = "Reliability "+str(100-TIME_QUANTILE)+"%" )
 plt.xlabel('Time Granularity [$\Delta$h]')
 plt.ylabel('Lost Volume [MW]')
 plt.title("Lost Volume By Time Granularity")
