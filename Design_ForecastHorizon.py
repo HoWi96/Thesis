@@ -33,6 +33,7 @@ DEMAND_INST2016 = 11589.6
 # In[] PROCESS DATA
 
 #Errors wind data
+wdataRT =   windData["RealTime"]/WIND_INST*100
 wdata5 =    windData["RealTime"]-windData["5h-ahead"]
 wdata24 =   windData["RealTime"]-windData["24h-ahead"]
 wdata168 =  windData["RealTime"]-windData["168h-ahead"]
@@ -115,25 +116,25 @@ for i in (0,1,2):
 #%% WIND PLOTS
 
 fig,axes = plt.subplots(1,2)
-fig.suptitle("Downward Reserves 100MWp Wind")
+#fig.suptitle("Downward Reserves 100MWp Wind")
              
 #aggdata.plot.density(ax = axes[0])
 #axes[0].set_xlabel("$\Delta$P [MW]")
 #axes[0].set_title("Error Density Plot")
 #axes[0].set_xlim(-50,50)
 
-axes[1].plot(100-x*100,wdata.quantile(x))
-axes[1].set_title("Error Quantile Plot")
+axes[1].plot(100-x*100,-wdata.quantile(x)/wdataRT.mean()*100)
+axes[1].set_title("(b) Error Quantile Plot")
 axes[1].set_xlabel("Reliability [%]")
-axes[1].set_ylabel("$\Delta$P [MW]")
+axes[1].set_ylabel("Lost Volume [%]")
 axes[1].legend(('4h','24h','168h','8760h'))
 
 RELIABILITY = .90
 #axes[0].plot(horizons,aggregatorSd,label="$\sigma_{error}$")
-axes[0].plot(horizons,np.abs(wdata.quantile(1-RELIABILITY)),label="Reliability "+str(RELIABILITY*100)+"%")
-axes[0].set_ylabel("Lost Volume [MW]")
+axes[0].plot(horizons,np.abs(wdata.quantile(1-RELIABILITY))/wdataRT.mean()*100,label="Reliability "+str(RELIABILITY*100)+"%")
+axes[0].set_ylabel("Lost Volume [%]")
 axes[0].set_xlabel("Forecast Horizon [h]")
-axes[0].set_title("Lost Volume By Forecast Horizon")
+axes[0].set_title("(a) Lost Volume By Forecast Horizon")
 axes[0].legend()
 
 #%% AGGREGATOR PLOTS
