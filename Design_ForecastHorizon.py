@@ -67,7 +67,7 @@ for j,source in enumerate([solar,wind,agg,demand]):
         lostVolume[i,j] = np.mean(source["RealTime"]-new)
 
 plt.close("all")
-horizons = ["0","4","24","168","8760"]
+horizons = ["0","4","24","168","8760*"]
 plt.plot(horizons,lostVolume)
 plt.xlabel('Forecast Horizon [h]')
 plt.ylabel('Lost Volume [MW]')
