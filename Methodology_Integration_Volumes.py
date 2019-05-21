@@ -4,48 +4,44 @@
 @author: Holger
 """
 
-#%% SET_UP
+#%% IMPORT
 
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 
-#%% PREPROCESS DATA
-
 solarRaw = pd.read_csv("Data/SolarForecastJune2017.csv")
 windRaw = pd.read_csv("Data/WindForecastJune2017.csv")
-data2016 = pd.read_csv("Data/data2016.csv")
+demandRaw = pd.read_csv("Data/LoadForecastJune2017.csv")
+allRaw2016 = pd.read_csv("Data/data2016.csv")
 
-SOLAR_MONITORED = 2952.78
-SOLAR_MONITORED2016 = 2952.78
-SOLAR_INSTALLED = 30
-WIND_MONITORED = 2424.07
-WIND_MONITORED2016 = 1960.91
-WIND_INSTALLED = 100
+#%% PREPROCESS DATA
 
-#Preprocess data
-wind8760 = data2016["wind"]*WIND_INSTALLED/WIND_MONITORED2016
-solar8760 = data2016["solar"]*SOLAR_INSTALLED/SOLAR_MONITORED2016
-agg8760 = wind8760 + solar8760
+WIND_INST = 2403.17
+SOLAR_INST= 2952.78
+DEMAND_PK= 11742.29
 
-wind168 = windRaw["168h-ahead"]*WIND_INSTALLED/WIND_MONITORED
-solar168 = solarRaw["168h-ahead"]*SOLAR_INSTALLED/SOLAR_MONITORED
-agg168 = wind168 + solar168
+WIND_INST2016 = 1960.91
+SOLAR_INST2016= 2952.78
+DEMAND_PK2016 = 11589.6
 
-wind24 = windRaw["24h-ahead"]*WIND_INSTALLED/WIND_MONITORED
-solar24 = solarRaw["24h-ahead"]*SOLAR_INSTALLED/SOLAR_MONITORED
-agg24 = wind24 + solar24
+solar = solarRaw.loc[:, solarRaw.columns != "DateTime"]*100/SOLAR_INST
+solar["8760h-ahead"] = allRaw2016["solar"]*100/SOLAR_INST2016
 
-wind5 = windRaw["5h-ahead"]*WIND_INSTALLED/WIND_MONITORED
-solar3 = solarRaw["3h-ahead"]*SOLAR_INSTALLED/SOLAR_MONITORED
-agg4 = wind5 + solar3
+wind = windRaw.loc[:, windRaw.columns != "DateTime"]*100/WIND_INST
+wind["8760h-ahead"] = allRaw2016["wind"]*100/WIND_INST2016
 
-wind = windRaw["RealTime"]*WIND_INSTALLED/WIND_MONITORED
-solar = solarRaw["RealTime"]*SOLAR_INSTALLED/SOLAR_MONITORED
-agg = wind + solar
+demand = demandRaw.loc[:, demandRaw.columns != "DateTime"]*100/DEMAND_PK
+demand["8760h-ahead"] = allRaw2016["load"]*100/DEMAND_PK2016
+
+agg = solar*0.25+wind*0.75
 
 #Place data in a dataframe, easy to handle
-df = pd.DataFrame(data={0:wind,4:wind5,24:wind24,168:wind168,8760:wind8760})
+df = pd.DataFrame(data={0:wind["RealTime"],
+                        4:wind["4h-ahead"],
+                        24:wind["24h-ahead"],
+                        168:wind["168h-ahead"],
+                        8760:wind["8760h-ahead"]})
 
 #%% RELIABILITY
 
