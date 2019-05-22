@@ -4,182 +4,135 @@ Created on 27/04/2019
 @author: Holger
 """
 
-#%% SET_UP
+#%% IMPORTS
 
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
-
-#%% DATA PREPROCESSING
+from Methodology_Integration_Volumes import calculateVolume
 
 solarRaw = pd.read_csv("Data/SolarForecastJune2017.csv")
 windRaw = pd.read_csv("Data/WindForecastJune2017.csv")
-data2016 = pd.read_csv("Data/data2016.csv")
+demandRaw = pd.read_csv("Data/LoadForecastJune2017.csv")
+allRaw2016 = pd.read_csv("Data/data2016.csv")
 
-SOLAR_MONITORED = 2952.78
-SOLAR_MONITORED2016 = 2952.78
-SOLAR_INSTALLED = 30
-WIND_MONITORED = 2424.07
-WIND_MONITORED2016 = 1960.91
-WIND_INSTALLED = 100
+#%% DATA PREPROCESSING
+
+WIND_INST = 2403.17
+SOLAR_INST= 2952.78
+DEMAND_PK= 11742.29
+WIND_INST2016 = 1960.91
+SOLAR_INST2016= 2952.78
+DEMAND_PK2016 = 11589.6
 
 #Preprocess data
-wind8760 = data2016["wind"]*WIND_INSTALLED/WIND_MONITORED2016
-solar8760 = data2016["solar"]*SOLAR_INSTALLED/SOLAR_MONITORED2016
-agg8760 = wind8760 + solar8760
+solar = solarRaw.loc[:, solarRaw.columns != "DateTime"]*100/SOLAR_INST
+solar[str(8760)] = allRaw2016["solar"]*100/SOLAR_INST2016
 
-wind168 = windRaw["168h-ahead"]*WIND_INSTALLED/WIND_MONITORED
-solar168 = solarRaw["168h-ahead"]*SOLAR_INSTALLED/SOLAR_MONITORED
-agg168 = wind168 + solar168
+wind = windRaw.loc[:, windRaw.columns != "DateTime"]*100/WIND_INST
+wind[str(8760)] = allRaw2016["wind"]*100/WIND_INST2016
 
-wind24 = windRaw["24h-ahead"]*WIND_INSTALLED/WIND_MONITORED
-solar24 = solarRaw["24h-ahead"]*SOLAR_INSTALLED/SOLAR_MONITORED
-agg24 = wind24 + solar24
+demand = demandRaw.loc[:, demandRaw.columns != "DateTime"]*100/DEMAND_PK
+demand[str(8760)] = allRaw2016["load"]*100/DEMAND_PK2016
+demand = demand - 30 #shedding limit
 
-wind5 = windRaw["5h-ahead"]*WIND_INSTALLED/WIND_MONITORED
-solar3 = solarRaw["3h-ahead"]*SOLAR_INSTALLED/SOLAR_MONITORED
-agg4 = wind5 + solar3
-
-wind = windRaw["RealTime"]*WIND_INSTALLED/WIND_MONITORED
-solar = solarRaw["RealTime"]*SOLAR_INSTALLED/SOLAR_MONITORED
-agg = wind + solar
+agg = solar*0.25+wind*0.75
 
 #Place data in a dataframe, easy to handle
-df = pd.DataFrame(data={0:agg,4:agg4,24:agg24,168:agg168,8760:agg8760})
-dfComponents = pd.DataFrame(data={"wind":wind,"solar":solar,"aggregator":agg})
+df = agg
 
-#%% DATA EXPLORATION
-
-#Delete previous plots
-plt.close("all")
-
-#Visualisation Time Series
-dfComponents.plot()
-plt.ylabel("Power [MW]")
-plt.xlabel("Time [15']")
-
-#Visualisation Probability Density Function
-dfComponents.plot.kde()
-plt.xlabel("Power [MW]")
-
-#visualisation Quantile Function
-plt.figure()
-
-quantiles = np.arange(0,1.01,.01)
-
-plot1 = plt.plot(quantiles*100,dfComponents.quantile(quantiles))
-addedValue = dfComponents["aggregator"].quantile(quantiles) - dfComponents["solar"].quantile(quantiles) - dfComponents["wind"].quantile(quantiles)
-plot2 =plt.plot(quantiles*100,addedValue)
-
-plt.plot([65], [addedValue[0.65]], 'o')
-
-labels = list(dfComponents)
-labels.append("Added Value Aggregator")
-plot = plot1+plot2
-plt.legend(plot, labels)
-plt.xlabel('Quantiles [%]')
-plt.ylabel('Power [MW]')
-
-#%% CONSTANTS VOLUMES
-
+#%%#####################
+########################
+# VOLUMES 
+########################
+########################
 #Constraints
 TIME_GRANULARITY = 24#h
-TIME_HORIZON = 24#h
+TIME_HORIZON = str(168)#h
 VOLUME_GRANULARITY = 1#MW
 VOLUME_MIN = 1#MW
 
-ACTIVATION_DURATION = 1#h
-UNCERTAINTY = 25
-TIME_QUANTILE = 5 
-
 #Product Characteristics
-TIME_TOTAL = 30*24#h
+TIME_TOTAL = int(df.shape[0]/4)#h
 TIME_GROUPS = int(TIME_TOTAL/TIME_GRANULARITY)
-
-#%% VOLUME ESTIMATION
-
-quantiles = np.arange(0,1,.0025)
-
-#C1 TIME GRANULARITY------------
-volumes = df[TIME_HORIZON]
-volumesC0 = volumes[int(0*4*TIME_GRANULARITY):int(1*4*TIME_GRANULARITY)].quantile(quantiles) #1Month
-for i in range(1,TIME_GROUPS):
-    volumesC0 += volumes[int(i*4*TIME_GRANULARITY):int((i+1)*4*TIME_GRANULARITY)].quantile(quantiles)
-
-#taking the mean
-volumesC0 = volumesC0/TIME_GROUPS 
-
-# C2 TIME HORIZON---------------
-#REMARK: commutative property with time granularity
-
-#Make a dictionary of indexbins and errorbins
-indexbin = {}
-errorbin = {}
-errSd = list()
-errN = list()
-step = 4
-minbin = round(df[TIME_HORIZON].min()- df[TIME_HORIZON].min()%step)
-maxbin = df[TIME_HORIZON].max()
-
-#Iterate over all bins
-for i,x in enumerate(np.arange(minbin,maxbin,step)):
-    indexbin[x] = np.where(np.column_stack((df[TIME_HORIZON]>(x-step*1.5),df[TIME_HORIZON]<(x+step*1.5))).all(axis=1))[0]
-    errorbin[x] = df[0][indexbin[x]]-df[TIME_HORIZON][indexbin[x]]
-    errSd.append(errorbin[x].std())
-    errN.append(len(errorbin[x]))
-    
-fig,axes = plt.subplots(2,3)
-for i,x in enumerate(np.arange(4,90,16)):
-    #error density plot + standard deviation per bin
-    errorbin[x].plot.density(ax = axes[int(i/3),i%3])
-    axes[int(i/3),i%3].set_title("Error bin of " + str(x) + "MW")
-    
-#Illustrate standard deviation + amount of sample per bin
-fig,axes = plt.subplots(1,2)
-axes[0].plot(np.arange(minbin,maxbin,step),errSd)
-axes[1].plot(np.arange(minbin,maxbin,step),errN)
-
-#add forecast error
-volumesC1 = volumesC0.copy()
-keys = (volumesC1-volumesC1%step).astype("int")
-volumesC1 = volumesC1 + [errorbin[key].quantile(UNCERTAINTY/100) for key in keys]
-volumesC1[volumesC1<0]=0
-
-# VOLUME CONSTRAINT----------------
-
-#volume granularity
-volumesC2 = volumesC1 - volumesC1%VOLUME_GRANULARITY
-
-#volume minimum
-volumesC3 = volumesC2.copy(); volumesC3[volumesC1<VOLUME_MIN]=0
-
-
-
-# ILLUSTRATE-----------------------
-
-#make plot
+########################
+plt.close("all")
 plt.figure()
 
-plt.axhline(df[0].mean(),label="Unconstrained Real Time")
+for df in [solar,wind,demand,agg]:
+    # (1) Initialize errorbins
+    indexbin = {}
+    errorbin = {}
+    step = 4
+    minbin = round(df[TIME_HORIZON].min()- df[TIME_HORIZON].min()%step)
+    maxbin = df[TIME_HORIZON].max()
+    
+    # (2) Create Errorbins
+    for i,x in enumerate(np.arange(minbin,maxbin,step)):
+        indexbin[x] = np.where(np.column_stack((df[TIME_HORIZON]>(x-step*1.5),df[TIME_HORIZON]<(x+step*1.5))).all(axis=1))[0]
+        errorbin[x] = df[str(0)][indexbin[x]]-df[TIME_HORIZON][indexbin[x]]
+        
+    # (3) Get a volume for each interval volume = f(reliability,interval)
+    
+    #quantiles
+    reliability = 1-np.arange(0,1,.1)
+    volumeReliability = np.zeros(reliability.shape)
+    
+    #loop over all reliabilities
+    for k,rel in enumerate(reliability):
+        bid = []
+        
+        #loop over intervals
+        for i in range(0,int(TIME_TOTAL/TIME_GRANULARITY)):
+            interval = df[TIME_HORIZON][int(i*4*TIME_GRANULARITY):int((i+1)*4*TIME_GRANULARITY)]
+            volume = calculateVolume(interval,errorbin,step,rel)
+            if volume < 0: 
+                volume = 0
+            bid = np.concatenate((bid, np.ones(int(TIME_GRANULARITY*4))*volume))
+    
+        # (4) Adjust to volume resolution
+        bid2 = bid - bid%VOLUME_GRANULARITY
+        
+        # (5) Adjust to volume minimum
+        bid2[bid2<VOLUME_MIN] = 0
+        
+        # (6) Take mean for reliability
+        volumeReliability[k] = bid2.mean()
+    plt.plot(reliability*100,volumeReliability)
+    plt.plot(reliability*100,np.ones(reliability.shape)*df[str(0)].mean(),linestyle = "--")
+    
+#%%########################
+# ILLUSTRATE
 
-volumesC0.plot(label="C1 Granularity "+str(TIME_GRANULARITY) +"h",linestyle = ":")
+##Reference Case Of ideal market
+#
 
-volumesC1.plot(label="C2 Horizon "+str(TIME_HORIZON)+"h",linestyle = ":")
+#Illustrate bidding
 
-volumesC3.plot(label="C3a Granularity " + str(VOLUME_GRANULARITY)+"MW"+
-               "\nC3b Minimum "+str(VOLUME_MIN)+"MW",linestyle = "--")
-
-plt.xlabel('Time Quantile [%]')
+titles = ["(a) Solar PV 100MWp Down",
+          "(a) Ideal Market",
+          "(b) Wind 100MWp Down",
+          "(b) Ideal Market",
+          "(c) Aggregator 100MWp Down",
+          "(c) Ideal Market",
+          "(d) Demand 100MWp Up (SL = 30MW)",
+          "(d) Ideal Market"]
+plt.legend(titles)
+plt.xlabel('Reliability [%]')
 plt.ylabel('Volume [MW]')
-plt.title("Downward Reserves 130MWp Aggregator\n\n"+
-          "Time total "+str(TIME_TOTAL)+"h, Uncertainty "+str(UNCERTAINTY)+"%, Time quantile "+str(TIME_QUANTILE)+"%")
-plt.legend()
+plt.title("Downward Reserves 100MWp Aggregator\n"+
+          str(TIME_HORIZON) + "h-Ahead Forecast,\n" +
+          str(TIME_GRANULARITY) + "h Resolution,\n" +
+          str(VOLUME_GRANULARITY) + "MW Resolution,\n" +
+          str(VOLUME_MIN) + "MW Minimum,\n" +
+          str(TIME_TOTAL) + "h Total Time")
 
+RELIABILITY = 90
 #Label preferred time quantile
-x = TIME_QUANTILE/100
-y = volumesC3[x]
+x = RELIABILITY
+y = volumeReliability[reliability== RELIABILITY/100][0]
 plt.plot([x], [y], 'o')
-plt.annotate('Time Quantile ' + str(TIME_QUANTILE) +"% \n"+ str(round(y,2))+ "MW",
+plt.annotate('Reliability ' + str(RELIABILITY) +"% \n"+ str(round(y,2))+ "MW",
             xy=(x,y),
             xytext=(.4,.2),
             textcoords = "figure fraction",
@@ -187,63 +140,67 @@ plt.annotate('Time Quantile ' + str(TIME_QUANTILE) +"% \n"+ str(round(y,2))+ "MW
             horizontalalignment='left',
             verticalalignment='bottom',
             )
-plt.show()
 
-#%% CONSTANTS FINANCIALS 
-
-#Activation Frequency
-TIME_DURATION = 24#h
-ACTIVATIONS = 2/12 #activations/M
-
-#financials
-EPEX_SPOT_PRICE = 70 #EUR/MW
-CAPACITY_REMUNERATION = 6 #EUR/MW/h
-ACTIVATION_REMUNERATION = max(250-EPEX_SPOT_PRICE,0) #EUR/MWh/activation
-ACTIVATION_PENALTY = 50*120*CAPACITY_REMUNERATION #EUR/MWh/activation
-
-
-#%% VALUE ESTIMATION
-
-quantiles = quantiles #np.array([0,0.003,0.01,0.05,0.10,0.15,0.20,0.50]) 
-volumes = volumesC3
-
-#Monthly Revenues
-#Assumption: ignore reported non-availability
-capacityRemuneration= TIME_TOTAL*CAPACITY_REMUNERATION*volumes
-activationRemuneration = ACTIVATION_DURATION*ACTIVATION_REMUNERATION*volumes
-activationPenalty = ACTIVATION_DURATION*ACTIVATION_PENALTY*volumes
-
-#revenues = capacityRemuneration + E[activationRemuneration] - E[finacialPenalty]
-#Binomial distribution of succesful activations with chance selected reliability
-revenues = capacityRemuneration + ACTIVATIONS*(activationRemuneration.multiply((1-quantiles),0) - activationPenalty.multiply(quantiles,0))
-
-#Components Expected Revenues Aggregator
-plt.figure()
-(capacityRemuneration/10**3).plot(label = "capacity remuneration")
-(ACTIVATIONS*activationRemuneration.multiply((1-quantiles),0)/10**3).plot(label = "activation remuneration")
-(ACTIVATIONS*activationPenalty.multiply(quantiles,0)/10**3).plot(label = "financial penalty")
-(revenues/10**3).plot(label = "Expected revenues")
-plt.xlabel("Quantiles")
-plt.ylabel("Revenues [k€/Month]")
-plt.legend()
-plt.show()
-
-#RECOMMENDATION ------------------
-x = revenues.idxmax()
-y = revenues[x]/10**3
-
-plt.plot([x], [y], 'o')
-plt.annotate('financial optimum '+str(round(y,2))+"k€/M",
-            xy=(x,y),
-            xytext=(0.65,0.9),
-            textcoords = "figure fraction",
-            arrowprops=dict(facecolor='black', shrink=0.05),
-            horizontalalignment='left',
-            verticalalignment='bottom',
-            )
-plt.show()
-
-#%% BREAKEVEN SANCTIONS VS REMUNERATION
-
-breakeven = capacityRemuneration/activationPenalty
-breakeven = 720/120
+##%%#####################
+#########################
+## FINANCIALS 
+#########################
+#########################
+##Activation Frequency
+#TIME_DURATION = 24#h
+#ACTIVATIONS = 2/12 #activations/M
+#ACTIVATION_DURATION = 1#h
+#
+##financials
+#EPEX_SPOT_PRICE = 70 #EUR/MW
+#CAPACITY_REMUNERATION = 6 #EUR/MW/h
+#ACTIVATION_REMUNERATION = max(250-EPEX_SPOT_PRICE,0) #EUR/MWh/activation
+#ACTIVATION_PENALTY = 50*120*CAPACITY_REMUNERATION #EUR/MWh/activation
+#########################
+#
+#
+#quantiles = quantiles #np.array([0,0.003,0.01,0.05,0.10,0.15,0.20,0.50]) 
+#volumes = volumesC3
+#
+##Monthly Revenues
+##Assumption: ignore reported non-availability
+#capacityRemuneration= TIME_TOTAL*CAPACITY_REMUNERATION*volumes
+#activationRemuneration = ACTIVATION_DURATION*ACTIVATION_REMUNERATION*volumes
+#activationPenalty = ACTIVATION_DURATION*ACTIVATION_PENALTY*volumes
+#
+##revenues = capacityRemuneration + E[activationRemuneration] - E[finacialPenalty]
+##Binomial distribution of succesful activations with chance selected reliability
+#revenues = capacityRemuneration + ACTIVATIONS*(activationRemuneration.multiply((1-quantiles),0) - activationPenalty.multiply(quantiles,0))
+#
+##%%########################
+## ILLUSTRATE
+#
+#plt.figure()
+#(capacityRemuneration/10**3).plot(label = "capacity remuneration")
+#(ACTIVATIONS*activationRemuneration.multiply((1-quantiles),0)/10**3).plot(label = "activation remuneration")
+#(ACTIVATIONS*activationPenalty.multiply(quantiles,0)/10**3).plot(label = "financial penalty")
+#(revenues/10**3).plot(label = "Expected revenues")
+#plt.xlabel("Quantiles")
+#plt.ylabel("Revenues [k€/Month]")
+#plt.legend()
+#plt.show()
+#
+##RECOMMENDATION ------------------
+#x = revenues.idxmax()
+#y = revenues[x]/10**3
+#
+#plt.plot([x], [y], 'o')
+#plt.annotate('financial optimum '+str(round(y,2))+"k€/M",
+#            xy=(x,y),
+#            xytext=(0.65,0.9),
+#            textcoords = "figure fraction",
+#            arrowprops=dict(facecolor='black', shrink=0.05),
+#            horizontalalignment='left',
+#            verticalalignment='bottom',
+#            )
+#plt.show()
+#
+##%% BREAKEVEN SANCTIONS VS REMUNERATION
+#
+#breakeven = capacityRemuneration/activationPenalty
+#breakeven = 720/120

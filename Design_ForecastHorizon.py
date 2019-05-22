@@ -9,7 +9,6 @@ Created on Mon Mar  4 17:45:52 2019
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
-from scipy.stats import gaussian_kde
 
 solarRaw = pd.read_csv("Data/SolarForecastJune2017.csv")
 windRaw = pd.read_csv("Data/WindForecastJune2017.csv")
