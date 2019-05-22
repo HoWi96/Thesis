@@ -16,6 +16,8 @@ windRaw = pd.read_csv("Data/WindForecastJune2017.csv")
 demandRaw = pd.read_csv("Data/LoadForecastJune2017.csv")
 allRaw2016 = pd.read_csv("Data/data2016.csv")
 
+print("START Case TenneT")
+
 #%% DATA PREPROCESSING
 
 WIND_INST = 2403.17
@@ -38,28 +40,31 @@ demand = demand - 30 #shedding limit
 
 agg = solar*0.25+wind*0.75
 
-#Place data in a dataframe, easy to handle
-df = agg
-
 #%%#####################
 ########################
 # VOLUMES 
 ########################
 ########################
+
 #Constraints
-TIME_GRANULARITY = 24#h
-TIME_HORIZON = str(168)#h
-VOLUME_GRANULARITY = 1#MW
-VOLUME_MIN = 1#MW
+TIME_GRANULARITY = 0.25#h
+TIME_HORIZON = str(4)#h
+VOLUME_GRANULARITY = 0.01#MW
+VOLUME_MIN = 0.01#MW
 
 #Product Characteristics
-TIME_TOTAL = int(df.shape[0]/4)#h
+TIME_TOTAL = int(solar.shape[0]/4)#h
 TIME_GROUPS = int(TIME_TOTAL/TIME_GRANULARITY)
 ########################
-plt.close("all")
-plt.figure()
 
-for df in [solar,wind,demand,agg]:
+#quantiles
+step = 0.01
+reliability = 1-np.arange(0,1+step,step)
+volumeReliability = np.zeros((reliability.shape[0],4))
+
+for idx,df in enumerate([solar,wind,agg,demand]):
+    print("Processing Source "+str(idx))
+    
     # (1) Initialize errorbins
     indexbin = {}
     errorbin = {}
@@ -73,10 +78,6 @@ for df in [solar,wind,demand,agg]:
         errorbin[x] = df[str(0)][indexbin[x]]-df[TIME_HORIZON][indexbin[x]]
         
     # (3) Get a volume for each interval volume = f(reliability,interval)
-    
-    #quantiles
-    reliability = 1-np.arange(0,1,.1)
-    volumeReliability = np.zeros(reliability.shape)
     
     #loop over all reliabilities
     for k,rel in enumerate(reliability):
@@ -97,55 +98,66 @@ for df in [solar,wind,demand,agg]:
         bid2[bid2<VOLUME_MIN] = 0
         
         # (6) Take mean for reliability
-        volumeReliability[k] = bid2.mean()
-    plt.plot(reliability*100,volumeReliability)
-    plt.plot(reliability*100,np.ones(reliability.shape)*df[str(0)].mean(),linestyle = "--")
+        volumeReliability[k,idx] = bid2.mean()
     
 #%%########################
 # ILLUSTRATE
+        
+print("Processing illustration")
 
 ##Reference Case Of ideal market
-#
+plt.close("all")
+plt.figure()
+
+for idx,df in enumerate([solar,wind,agg,demand]):
+    plt.plot(reliability*100,volumeReliability[:,idx])
+    
+col = ['C0', 'C1', 'C2', 'C3']
+for idx,df in enumerate([solar,wind,agg,demand]):
+    plt.plot(reliability*100,np.ones(reliability.shape)*df[str(0)].mean(),linestyle = "--",color = col[idx])
 
 #Illustrate bidding
 
 titles = ["(a) Solar PV 100MWp Down",
-          "(a) Ideal Market",
           "(b) Wind 100MWp Down",
-          "(b) Ideal Market",
           "(c) Aggregator 100MWp Down",
-          "(c) Ideal Market",
           "(d) Demand 100MWp Up (SL = 30MW)",
-          "(d) Ideal Market"]
+          "(a) Solar Reference",
+          "(b) Wind Reference",
+          "(c) Aggregator Reference",
+          "(d) Demand Reference"]
 plt.legend(titles)
 plt.xlabel('Reliability [%]')
 plt.ylabel('Volume [MW]')
-plt.title("Downward Reserves 100MWp Aggregator\n"+
-          str(TIME_HORIZON) + "h-Ahead Forecast,\n" +
-          str(TIME_GRANULARITY) + "h Resolution,\n" +
-          str(VOLUME_GRANULARITY) + "MW Resolution,\n" +
-          str(VOLUME_MIN) + "MW Minimum,\n" +
+plt.xlim((0,100))
+plt.ylim((0,60))
+plt.title("Optimum mFRR 20XX\n\n"+
+          str(TIME_HORIZON) + "h-Ahead Forecast, " +
+          str(TIME_GRANULARITY) + "h Resolution, " +
+          str(VOLUME_GRANULARITY) + "MW Resolution, " +
+          str(VOLUME_MIN) + "MW Minimum, " +
           str(TIME_TOTAL) + "h Total Time")
 
-RELIABILITY = 90
-#Label preferred time quantile
-x = RELIABILITY
-y = volumeReliability[reliability== RELIABILITY/100][0]
-plt.plot([x], [y], 'o')
-plt.annotate('Reliability ' + str(RELIABILITY) +"% \n"+ str(round(y,2))+ "MW",
-            xy=(x,y),
-            xytext=(.4,.2),
-            textcoords = "figure fraction",
-            arrowprops=dict(facecolor='black', shrink=0.05),
-            horizontalalignment='left',
-            verticalalignment='bottom',
-            )
+#import winsound
+#duration = 2000  # milliseconds
+#freq = 247  # Hz
+#winsound.Beep(freq*2, duration)
+#winsound.Beep(196*2, duration)
+#winsound.Beep(247*2, duration)
+#winsound.Beep(165*2, duration)
+#winsound.Beep(196*2, duration)
+#winsound.Beep(165*2, duration)
+#winsound.Beep(247*2, duration)
+#winsound.Beep(185*2, duration)
+
 
 ##%%#####################
 #########################
 ## FINANCIALS 
 #########################
 #########################
+#print("START Financials")
+#
 ##Activation Frequency
 #TIME_DURATION = 24#h
 #ACTIVATIONS = 2/12 #activations/M
