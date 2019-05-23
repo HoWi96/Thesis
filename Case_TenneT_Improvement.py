@@ -62,7 +62,8 @@ step = 0.1
 reliability = 1-np.arange(0,1+step/2,step)
 volumeReliability = np.zeros((reliability.shape[0],4))
 
-for idx,df in enumerate([solar,wind,agg,demand]):
+#[solar,wind,agg,demand]
+for idx,df in enumerate([solar]):
     print("Processing Source "+str(idx))
     
     # (1) Initialize errorbins
@@ -140,35 +141,73 @@ for idx,df in enumerate([solar,wind,agg,demand]):
 # FINANCIALS 
 ########################
 ########################
+TENNET = 0
+
 print("START Financials")
 
-#Activation Frequency
-ACTIVATIONS = 2/12 #activations/M
-ACTIVATION_DURATION = 1#h
-CAPACITY_DURATION = 720#h
-
-#financials
-EPEX_SPOT_PRICE = 70 #EUR/MW
-CAPACITY_REMUNERATION = 6 #EUR/MW/h
-ACTIVATION_REMUNERATION = max(250-EPEX_SPOT_PRICE,0) #EUR/MWh/activation
-ACTIVATION_PENALTY = 120*CAPACITY_REMUNERATION #EUR/MWh/activation
-########################
 
 reliability = reliability
 volumes = volumeReliability
 
-#Monthly Revenues
-#Assumption: ignore reported non-availability
-capacityRemuneration =      CAPACITY_DURATION*CAPACITY_REMUNERATION*volumes
-activationRemuneration =    ACTIVATION_DURATION*ACTIVATION_REMUNERATION*volumes
-activationPenalty =         ACTIVATION_DURATION*ACTIVATION_PENALTY*volumes
-
-#revenues = capacityRemuneration + E[activationRemuneration] - E[finacialPenalty]
-#Binomial distribution of succesful activations with chance selected reliability
-capacityRevenues = capacityRemuneration
-activationRevenues = ACTIVATIONS*(np.matmul(np.diag(reliability),activationRemuneration) - np.matmul(np.diag(1-reliability),activationRemuneration))
-revenues = capacityRevenues + activationRevenues
-
+if TENNET == 1:
+    print("TenneT 2018 selected")
+    #Activation Frequency
+    ACTIVATIONS = 2/12 #activations/M
+    ACTIVATION_DURATION = 1#h
+    CAPACITY_DURATION = 720#h
+    
+    #financials
+    EPEX_SPOT_PRICE = 70 #EUR/MW
+    CAPACITY_REMUNERATION = 6 #EUR/MW/h
+    ACTIVATION_REMUNERATION = max(250-EPEX_SPOT_PRICE,0) #EUR/MWh/activation
+    ACTIVATION_PENALTY = 120*CAPACITY_REMUNERATION #EUR/MWh/activation
+        
+    ########################
+    
+    #Monthly Revenues
+    #Assumption: ignore reported non-availability
+    capacityRemuneration =      CAPACITY_DURATION*CAPACITY_REMUNERATION*volumes
+    activationRemuneration =    ACTIVATION_DURATION*ACTIVATION_REMUNERATION*volumes
+    activationPenalty =         ACTIVATION_DURATION*ACTIVATION_PENALTY*volumes
+    
+    #revenues = capacityRemuneration + E[activationRemuneration] - E[finacialPenalty]
+    #Binomial distribution of succesful activations with chance selected reliability
+    capacityRevenues = capacityRemuneration
+    activationRevenues = ACTIVATIONS*(np.matmul(np.diag(reliability),activationRemuneration))
+    activationCosts = ACTIVATIONS*np.matmul(np.diag(1-reliability),activationPenalty)
+    
+else:
+    print("Elia 2020 selected")
+    #Activation Frequency
+    ACTIVATIONS = 4 #activations/M
+    ACTIVATION_DURATION = 4#h
+    CAPACITY_DURATION = 720#h
+    
+    #financials
+    CAPACITY_REMUNERATION = 6 #EUR/MW/h
+    ACTIVATION_REMUNERATION = 150 #EUR/MWh/activation
+    ACTIVATION_PENALTY = 100 #EUR/MWh/activation
+    
+    #capacity remuneration on the full volume bid
+    capacityRemuneration =      CAPACITY_DURATION*CAPACITY_REMUNERATION*volumes
+    capacityRemuneration100 =   np.tile(CAPACITY_DURATION*CAPACITY_REMUNERATION*volumes[0,:],(11,1))
+    
+    #activation remuneration on the full volume bid
+    activationRemuneration =    ACTIVATION_DURATION*ACTIVATION_REMUNERATION*volumes
+    activationRemuneration100 = np.tile(ACTIVATION_DURATION*ACTIVATION_REMUNERATION*volumes[0,:],(11,1))
+    
+    #activation penalty settled via reserve market on missed volumes
+    activationPenalty =         ACTIVATION_DURATION*ACTIVATION_PENALTY*(volumes-volumes[0,:])
+    
+    capacityRevenues = (np.matmul(np.diag(reliability),capacityRemuneration)+
+                        np.matmul(np.diag(1-reliability),capacityRemuneration100))
+    activationRevenues = ACTIVATIONS*(np.matmul(np.diag(reliability),activationRemuneration) + 
+                                      np.matmul(np.diag(1-reliability),activationRemuneration100))
+    activationCosts = np.matmul(np.diag(1-reliability),activationPenalty)
+  
+#revenues
+revenues = capacityRevenues + activationRevenues - activationCosts
+    
 #%%########################
 # ILLUSTRATE
 fig,axes = plt.subplots(2,2)
@@ -178,9 +217,9 @@ titles = ["(a) Solar PV 100MWp Down",
           "(d) Demand 100MWp Up (SL = 30MW)"]
 
 for k,source in enumerate(volumes.transpose()):
-    axes[int(k/2),k%2].plot(reliability, capacityRemuneration[:,k]/10**3, label = "Capacity Remuneration")
-    axes[int(k/2),k%2].plot(reliability, ACTIVATIONS*np.matmul(np.diag(reliability),activationRemuneration[:,k])/10**3, label = "Activation Remuneration")
-    axes[int(k/2),k%2].plot(reliability, ACTIVATIONS*np.matmul(np.diag(1-reliability),activationRemuneration[:,k])/10**3, label = "Activation Penalty")
+    axes[int(k/2),k%2].plot(reliability, capacityRevenues[:,k]/10**3, label = "Capacity Remuneration")
+    axes[int(k/2),k%2].plot(reliability, activationRevenues[:,k]/10**3, label = "Activation Remuneration")
+    axes[int(k/2),k%2].plot(reliability, activationCosts[:,k]/10**3, label = "Activation Penalty")
     axes[int(k/2),k%2].plot(reliability, revenues[:,k]/10**3, label = "Expected revenues")
     
     axes[int(k/2),k%2].set_xlabel("Reliability")
@@ -201,6 +240,7 @@ for k,source in enumerate(volumes.transpose()):
                                     horizontalalignment='left',
                                     verticalalignment='bottom'
                                     )
+
     
 print("STOP Financials")
 print("\a")
