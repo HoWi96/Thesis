@@ -9,7 +9,6 @@
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
-import winsound
 
 #%% RELIABILITY
 
@@ -23,7 +22,7 @@ def calculateVolume(interval,errorbin,step,rel=0.99):
     count = 0
     rel_eff = -1
     volRef = interval.quantile(1-rel)
-    volRefError = errorbin[volRef-volRef%step]
+    volRefError = errorbin[interval.quantile(0.5)-interval.quantile(0.5)%step]
     uncertaintyGuessNew = -1
     volGuess = -1
     difference = -1

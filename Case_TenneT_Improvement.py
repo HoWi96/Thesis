@@ -47,10 +47,10 @@ agg = solar*0.25+wind*0.75
 ########################
 
 #Constraints
-TIME_GRANULARITY = 0.25#h
-TIME_HORIZON = str(4)#h
-VOLUME_GRANULARITY = 0.01#MW
-VOLUME_MIN = 0.01#MW
+TIME_GRANULARITY = 720#h
+TIME_HORIZON = str(8760)#h
+VOLUME_GRANULARITY = 5#MW
+VOLUME_MIN = 20#MW
 
 #Product Characteristics
 TIME_TOTAL = int(solar.shape[0]/4)#h
@@ -58,8 +58,8 @@ TIME_GROUPS = int(TIME_TOTAL/TIME_GRANULARITY)
 ########################
 
 #quantiles
-step = 0.01
-reliability = 1-np.arange(0,1+step,step)
+step = 0.1
+reliability = 1-np.arange(0,1+step/2,step)
 volumeReliability = np.zeros((reliability.shape[0],4))
 
 for idx,df in enumerate([solar,wind,agg,demand]):
@@ -81,6 +81,7 @@ for idx,df in enumerate([solar,wind,agg,demand]):
     
     #loop over all reliabilities
     for k,rel in enumerate(reliability):
+        print(rel)
         bid = []
         
         #loop over intervals
@@ -111,108 +112,100 @@ plt.figure()
 
 for idx,df in enumerate([solar,wind,agg,demand]):
     plt.plot(reliability*100,volumeReliability[:,idx])
-    
-col = ['C0', 'C1', 'C2', 'C3']
-for idx,df in enumerate([solar,wind,agg,demand]):
-    plt.plot(reliability*100,np.ones(reliability.shape)*df[str(0)].mean(),linestyle = "--",color = col[idx])
 
 #Illustrate bidding
 
 titles = ["(a) Solar PV 100MWp Down",
           "(b) Wind 100MWp Down",
           "(c) Aggregator 100MWp Down",
-          "(d) Demand 100MWp Up (SL = 30MW)",
-          "(a) Solar Reference",
-          "(b) Wind Reference",
-          "(c) Aggregator Reference",
-          "(d) Demand Reference"]
+          "(d) Demand 100MWp Up (SL = 30MW)"]
 plt.legend(titles)
 plt.xlabel('Reliability [%]')
 plt.ylabel('Volume [MW]')
 plt.xlim((0,100))
-plt.ylim((0,60))
-plt.title("Optimum mFRR 20XX\n\n"+
+plt.ylim(0)
+plt.title("TenneT mFRR 20XX\n\n"+
           str(TIME_HORIZON) + "h-Ahead Forecast, " +
           str(TIME_GRANULARITY) + "h Resolution, " +
           str(VOLUME_GRANULARITY) + "MW Resolution, " +
           str(VOLUME_MIN) + "MW Minimum, " +
           str(TIME_TOTAL) + "h Total Time")
 
-#import winsound
-#duration = 2000  # milliseconds
-#freq = 247  # Hz
-#winsound.Beep(freq*2, duration)
-#winsound.Beep(196*2, duration)
-#winsound.Beep(247*2, duration)
-#winsound.Beep(165*2, duration)
-#winsound.Beep(196*2, duration)
-#winsound.Beep(165*2, duration)
-#winsound.Beep(247*2, duration)
-#winsound.Beep(185*2, duration)
+col = ['C0', 'C1', 'C2', 'C3']
+for idx,df in enumerate([solar,wind,agg,demand]):
+    plt.plot(reliability*100,np.ones(reliability.shape)*df[str(0)].mean(),linestyle = "--",color = col[idx])
 
+#%%#####################
+########################
+# FINANCIALS 
+########################
+########################
+print("START Financials")
 
-##%%#####################
-#########################
-## FINANCIALS 
-#########################
-#########################
-#print("START Financials")
-#
-##Activation Frequency
-#TIME_DURATION = 24#h
-#ACTIVATIONS = 2/12 #activations/M
-#ACTIVATION_DURATION = 1#h
-#
-##financials
-#EPEX_SPOT_PRICE = 70 #EUR/MW
-#CAPACITY_REMUNERATION = 6 #EUR/MW/h
-#ACTIVATION_REMUNERATION = max(250-EPEX_SPOT_PRICE,0) #EUR/MWh/activation
-#ACTIVATION_PENALTY = 50*120*CAPACITY_REMUNERATION #EUR/MWh/activation
-#########################
-#
-#
-#quantiles = quantiles #np.array([0,0.003,0.01,0.05,0.10,0.15,0.20,0.50]) 
-#volumes = volumesC3
-#
-##Monthly Revenues
-##Assumption: ignore reported non-availability
-#capacityRemuneration= TIME_TOTAL*CAPACITY_REMUNERATION*volumes
-#activationRemuneration = ACTIVATION_DURATION*ACTIVATION_REMUNERATION*volumes
-#activationPenalty = ACTIVATION_DURATION*ACTIVATION_PENALTY*volumes
-#
-##revenues = capacityRemuneration + E[activationRemuneration] - E[finacialPenalty]
-##Binomial distribution of succesful activations with chance selected reliability
-#revenues = capacityRemuneration + ACTIVATIONS*(activationRemuneration.multiply((1-quantiles),0) - activationPenalty.multiply(quantiles,0))
-#
-##%%########################
-## ILLUSTRATE
-#
-#plt.figure()
-#(capacityRemuneration/10**3).plot(label = "capacity remuneration")
-#(ACTIVATIONS*activationRemuneration.multiply((1-quantiles),0)/10**3).plot(label = "activation remuneration")
-#(ACTIVATIONS*activationPenalty.multiply(quantiles,0)/10**3).plot(label = "financial penalty")
-#(revenues/10**3).plot(label = "Expected revenues")
-#plt.xlabel("Quantiles")
-#plt.ylabel("Revenues [k€/Month]")
-#plt.legend()
-#plt.show()
-#
-##RECOMMENDATION ------------------
-#x = revenues.idxmax()
-#y = revenues[x]/10**3
-#
-#plt.plot([x], [y], 'o')
-#plt.annotate('financial optimum '+str(round(y,2))+"k€/M",
-#            xy=(x,y),
-#            xytext=(0.65,0.9),
-#            textcoords = "figure fraction",
-#            arrowprops=dict(facecolor='black', shrink=0.05),
-#            horizontalalignment='left',
-#            verticalalignment='bottom',
-#            )
-#plt.show()
-#
-##%% BREAKEVEN SANCTIONS VS REMUNERATION
-#
-#breakeven = capacityRemuneration/activationPenalty
-#breakeven = 720/120
+#Activation Frequency
+ACTIVATIONS = 2/12 #activations/M
+ACTIVATION_DURATION = 1#h
+CAPACITY_DURATION = 720#h
+
+#financials
+EPEX_SPOT_PRICE = 70 #EUR/MW
+CAPACITY_REMUNERATION = 6 #EUR/MW/h
+ACTIVATION_REMUNERATION = max(250-EPEX_SPOT_PRICE,0) #EUR/MWh/activation
+ACTIVATION_PENALTY = 120*CAPACITY_REMUNERATION #EUR/MWh/activation
+########################
+
+reliability = reliability
+volumes = volumeReliability
+
+#Monthly Revenues
+#Assumption: ignore reported non-availability
+capacityRemuneration =      CAPACITY_DURATION*CAPACITY_REMUNERATION*volumes
+activationRemuneration =    ACTIVATION_DURATION*ACTIVATION_REMUNERATION*volumes
+activationPenalty =         ACTIVATION_DURATION*ACTIVATION_PENALTY*volumes
+
+#revenues = capacityRemuneration + E[activationRemuneration] - E[finacialPenalty]
+#Binomial distribution of succesful activations with chance selected reliability
+capacityRevenues = capacityRemuneration
+activationRevenues = ACTIVATIONS*(np.matmul(np.diag(reliability),activationRemuneration) - np.matmul(np.diag(1-reliability),activationRemuneration))
+revenues = capacityRevenues + activationRevenues
+
+#%%########################
+# ILLUSTRATE
+fig,axes = plt.subplots(2,2)
+titles = ["(a) Solar PV 100MWp Down",
+          "(b) Wind 100MWp Down",
+          "(c) Aggregator 100MWp Down",
+          "(d) Demand 100MWp Up (SL = 30MW)"]
+
+for k,source in enumerate(volumes.transpose()):
+    axes[int(k/2),k%2].plot(reliability, capacityRemuneration[:,k]/10**3, label = "Capacity Remuneration")
+    axes[int(k/2),k%2].plot(reliability, ACTIVATIONS*np.matmul(np.diag(reliability),activationRemuneration[:,k])/10**3, label = "Activation Remuneration")
+    axes[int(k/2),k%2].plot(reliability, ACTIVATIONS*np.matmul(np.diag(1-reliability),activationRemuneration[:,k])/10**3, label = "Activation Penalty")
+    axes[int(k/2),k%2].plot(reliability, revenues[:,k]/10**3, label = "Expected revenues")
+    
+    axes[int(k/2),k%2].set_xlabel("Reliability")
+    axes[int(k/2),k%2].set_ylabel("Revenues [k€/Month]")
+    axes[int(k/2),k%2].set_title(titles[k])
+    axes[int(k/2),k%2].legend()
+
+    ##RECOMMENDATION ------------------
+    x = reliability[np.argmax(revenues[:,k])]
+    y = np.amax(revenues[:,k])/10**3
+    
+    axes[int(k/2),k%2].plot([x], [y], 'o')
+    axes[int(k/2),k%2].annotate(str(round(y,2))+"k€/M",
+                                    xy=(x,y),
+                                    #xytext=(0.4,0.8),
+                                    #textcoords = "figure fraction",
+                                    arrowprops=dict(facecolor='black', shrink=0.05),
+                                    horizontalalignment='left',
+                                    verticalalignment='bottom'
+                                    )
+    
+print("STOP Financials")
+print("\a")
+
+#%% BREAKEVEN SANCTIONS VS REMUNERATION
+
+breakeven = capacityRemuneration/activationPenalty
+breakeven = 720/120

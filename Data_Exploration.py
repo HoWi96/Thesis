@@ -83,12 +83,12 @@ plt.xlabel('Quantiles [%]')
 plt.ylabel('Power [MW]')
 
 #%% ILLUSTRATE ERROR BINS
-df = agg
-TIME_HORIZON = str(24)#h
+df = wind
+TIME_HORIZON = str(8760)#h
 
 indexbin = {}
 errorbin = {}
-errSd = list()
+errQ = list()
 errN = list()
 step = 4
 x = 0
@@ -99,12 +99,12 @@ maxbin = df[TIME_HORIZON].max()
 for i,x in enumerate(np.arange(minbin,maxbin,step)):
     indexbin[x] = np.where(np.column_stack((df[TIME_HORIZON]>(x-step*1.5),df[TIME_HORIZON]<(x+step*1.5))).all(axis=1))[0]
     errorbin[x] = df[str(0)][indexbin[x]]-df[TIME_HORIZON][indexbin[x]]
-    errSd.append(errorbin[x].std())
+    errQ.append(errorbin[x].quantile(0.9))
     errN.append(len(errorbin[x]))
     
 #Illustrate standard deviation per bin
 fig,axes = plt.subplots(1,2)
-axes[0].plot(np.arange(minbin,maxbin,step),errSd)
+axes[0].plot(np.arange(minbin,maxbin,step),errQ)
 axes[1].plot(np.arange(minbin,maxbin,step),errN)
 
 #Illustrate error bins
@@ -112,4 +112,18 @@ fig,axes = plt.subplots(2,3)
 for i,x in enumerate(np.arange(minbin,maxbin,16)):
     errorbin[x].plot.density(ax = axes[int(i/3),i%3])
     axes[int(i/3),i%3].set_title("Error bin of " + str(x) + "MW")
+    
+#%% Make some music
+    
+#import winsound
+#duration = 2000  # milliseconds
+#freq = 247  # Hz
+#winsound.Beep(freq*2, duration)
+#winsound.Beep(196*2, duration)
+#winsound.Beep(247*2, duration)
+#winsound.Beep(165*2, duration)
+#winsound.Beep(196*2, duration)
+#winsound.Beep(165*2, duration)
+#winsound.Beep(247*2, duration)
+#winsound.Beep(185*2, duration)
     
