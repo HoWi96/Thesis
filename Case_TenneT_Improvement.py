@@ -45,12 +45,19 @@ agg = solar*0.25+wind*0.75
 # VOLUMES 
 ########################
 ########################
+TENNET = 0
 
-#Constraints
-TIME_GRANULARITY = 720#h
-TIME_HORIZON = str(8760)#h
-VOLUME_GRANULARITY = 5#MW
-VOLUME_MIN = 20#MW
+if TENNET == 1:
+    #Constraints
+    TIME_GRANULARITY = 720#h
+    TIME_HORIZON = str(8760)#h
+    VOLUME_GRANULARITY = 5#MW
+    VOLUME_MIN = 20#MW
+else:
+    TIME_GRANULARITY = 4#h
+    TIME_HORIZON = str(24)#h
+    VOLUME_GRANULARITY = 1#MW
+    VOLUME_MIN = 1#MW
 
 #Product Characteristics
 TIME_TOTAL = int(solar.shape[0]/4)#h
@@ -141,7 +148,6 @@ for idx,df in enumerate([solar,wind,agg,demand]):
 # FINANCIALS 
 ########################
 ########################
-TENNET = 0
 
 print("START Financials")
 
@@ -173,6 +179,7 @@ if TENNET == 1:
     #revenues = capacityRemuneration + E[activationRemuneration] - E[finacialPenalty]
     #Binomial distribution of succesful activations with chance selected reliability
     capacityRevenues = capacityRemuneration
+    capacityCosts = 0
     activationRevenues = ACTIVATIONS*(np.matmul(np.diag(reliability),activationRemuneration))
     activationCosts = ACTIVATIONS*np.matmul(np.diag(1-reliability),activationPenalty)
     
@@ -194,19 +201,22 @@ else:
     
     #activation remuneration on the full volume bid
     activationRemuneration =    ACTIVATION_DURATION*ACTIVATION_REMUNERATION*volumes
-    activationRemuneration100 = np.tile(ACTIVATION_DURATION*ACTIVATION_REMUNERATION*volumes[0,:],(11,1))
     
-    #activation penalty settled via reserve market on missed volumes
+    #activation penalty
     activationPenalty =         ACTIVATION_DURATION*ACTIVATION_PENALTY*(volumes-volumes[0,:])
     
-    capacityRevenues = (np.matmul(np.diag(reliability),capacityRemuneration)+
-                        np.matmul(np.diag(1-reliability),capacityRemuneration100))
-    activationRevenues = ACTIVATIONS*(np.matmul(np.diag(reliability),activationRemuneration) + 
-                                      np.matmul(np.diag(1-reliability),activationRemuneration100))
-    activationCosts = np.matmul(np.diag(1-reliability),activationPenalty)
-  
+    #Capacity Revenues exist of procured volumes
+    capacityRevenues = np.matmul(np.diag(1-(1-reliability)**3),capacityRemuneration)
+    capacityCosts = np.matmul(np.diag(1-(1-reliability)**3),
+                              np.matmul(np.diag(1-reliability),capacityRemuneration-capacityRemuneration100))
+      
+    #Activation Revenues exist of actived volumes                  
+    activationRevenues = ACTIVATIONS*np.matmul(np.diag(1-(1-reliability)**3),activationRemuneration)
+    activationCosts =    ACTIVATIONS*np.matmul(np.diag(1-(1-reliability)**3),
+                                               np.matmul(np.diag(1-reliability),activationPenalty))
+
 #revenues
-revenues = capacityRevenues + activationRevenues - activationCosts
+revenues = capacityRevenues - capacityCosts + activationRevenues - activationCosts 
     
 #%%########################
 # ILLUSTRATE
@@ -244,8 +254,3 @@ for k,source in enumerate(volumes.transpose()):
     
 print("STOP Financials")
 print("\a")
-
-#%% BREAKEVEN SANCTIONS VS REMUNERATION
-
-breakeven = capacityRemuneration/activationPenalty
-breakeven = 720/120

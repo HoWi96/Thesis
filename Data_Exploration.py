@@ -127,3 +127,10 @@ for i,x in enumerate(np.arange(minbin,maxbin,16)):
 #winsound.Beep(247*2, duration)
 #winsound.Beep(185*2, duration)
     
+    
+#%% BREAKEVEN SANCTIONS VS REMUNERATION
+#
+#breakeven = capacityRemuneration/activationPenalty
+#breakeven = 720/120
+
+    
