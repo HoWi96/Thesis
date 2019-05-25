@@ -9,6 +9,7 @@
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
+import PreprocessData as pre
 
 #%% RELIABILITY
 
@@ -71,7 +72,7 @@ def bidVolume(df, TIME_TOTAL,TIME_HORIZON, TIME_GRANULARITY, VOLUME_GRANULARITY,
     maxbin = df[TIME_HORIZON].max()
     for i,x in enumerate(np.arange(minbin,maxbin,step)):
         indexbin[x] = np.where(np.column_stack((df[TIME_HORIZON]>(x-step*1.5),df[TIME_HORIZON]<(x+step*1.5))).all(axis=1))[0]
-        errorbin[x] = df[0][indexbin[x]]-df[TIME_HORIZON][indexbin[x]]
+        errorbin[x] = df["0"][indexbin[x]]-df[TIME_HORIZON][indexbin[x]]
         
     #volume = f(reliability,interval)
     bid = []
@@ -110,66 +111,36 @@ def bidVolume(df, TIME_TOTAL,TIME_HORIZON, TIME_GRANULARITY, VOLUME_GRANULARITY,
 if __name__ == "__main__":
     
     print("START Methodology Intergation Volumes")
+
+    #PREPROCESS
+    solarRaw,windRaw,demandRaw,allRaw2016 = pre.importData()
+    solar,wind,agg,demand = pre.preprocessData(solarRaw,windRaw,demandRaw,allRaw2016)
+    df = wind
     
-    #%% IMPORT
-    solarRaw = pd.read_csv("Data/SolarForecastJune2017.csv")
-    windRaw = pd.read_csv("Data/WindForecastJune2017.csv")
-    demandRaw = pd.read_csv("Data/LoadForecastJune2017.csv")
-    allRaw2016 = pd.read_csv("Data/data2016.csv")
-    
-    #%% PREPROCESS DATA
-    
-    WIND_INST = 2403.17
-    SOLAR_INST= 2952.78
-    DEMAND_PK= 11742.29
-    
-    WIND_INST2016 = 1960.91
-    SOLAR_INST2016= 2952.78
-    DEMAND_PK2016 = 11589.6
-    
-    solar = solarRaw.loc[:, solarRaw.columns != "DateTime"]*100/SOLAR_INST
-    solar["8760"] = allRaw2016["solar"]*100/SOLAR_INST2016
-    
-    wind = windRaw.loc[:, windRaw.columns != "DateTime"]*100/WIND_INST
-    wind["8760"] = allRaw2016["wind"]*100/WIND_INST2016
-    
-    demand = demandRaw.loc[:, demandRaw.columns != "DateTime"]*100/DEMAND_PK
-    demand["8760"] = allRaw2016["load"]*100/DEMAND_PK2016
-    
-    agg = solar*0.25+wind*0.75
-    
-    #Place data in a dataframe, easy to handle
-    df = pd.DataFrame(data={0:wind["0"],
-                            4:wind["4"],
-                            24:wind["24"],
-                            168:wind["168"],
-                            8760:wind["8760"]})
-    
-    #%% ILLUSTRATE
+    #ILLUSTRATE
     plt.close("all")    
-    
+
+    #effective volumes
     TIME_TOTAL = 168
-    
-    # REFERENCE PRODUCTION
-    realTime = df[0][:TIME_TOTAL*4]
+    realTime = df["0"][:TIME_TOTAL*4]
     plt.plot(np.arange(0,TIME_TOTAL,0.25), realTime, label = "Realtime Generation",linestyle = ":",linewidth=1.5)
     
-    # REFERENCE FORECAST
-#    TIME_HORIZON = 24
-#    forecast = df[TIME_HORIZON][:TIME_TOTAL*4]
-#    plt.plot(np.arange(0,TIME_TOTAL,0.25), forecast, label = "--------------------------\n"+str(TIME_HORIZON)+"h-Ahead Forecast",linestyle = "-",linewidth=1)
+    #forecasted volumes
+    #forecast = df["24"][:TIME_TOTAL*4]
+    #plt.plot(np.arange(0,TIME_TOTAL,0.25), forecast, label = "--------------------------\n"+str(TIME_HORIZON)+"h-Ahead Forecast",linestyle = "-",linewidth=1)
     
-    #SPECIFICATIONS
-    #volume = bidVolume(df, TIME_TOTAL, 24, 0.25, 0.01, 0.01, 0.95)
-    #volume = bidVolume(df, TIME_TOTAL, 24, 12.00, 0.01, 0.01, 0.95)
-    volume = bidVolume(df, TIME_TOTAL, 24, 12.00, 1, 5, 0.95)
+    #bid volumes
+    #TIME_TOTAL = 168
+    #volume = bidVolume(df, TIME_TOTAL, str(24), 0.25, 0.01, 0.01, 0.95)
+    #volume = bidVolume(df, TIME_TOTAL, str(24), 12.00, 0.01, 0.01, 0.95)
+    #volume = bidVolume(df, TIME_TOTAL, str(24), 12.00, 5, 0.01, 0.95)
+    volume = bidVolume(df, TIME_TOTAL, str(24), 12.00, 5, 10, 0.95)
     
     plt.legend()
     plt.xlabel("Time [h]")
     plt.ylabel("Volume [MW]")
     plt.ylim((0,100))
     plt.title("Downward Reserves 100MWp Wind, "+"Time Total "+str(TIME_TOTAL)+"h")
-    plt.legend(bbox_transform=plt.gcf().transFigure)
     
     print("\a")
     print("STOP Methodology Intergation Volumes")
