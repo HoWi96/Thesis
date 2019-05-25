@@ -17,7 +17,7 @@ solar,wind,agg,demand = pre.preprocessData(solarRaw,windRaw,demandRaw,allRaw2016
 #%%PROCESS
 
 #initialize
-RELIABILITY = 90
+RELIABILITY = 95
 bidVolume = np.zeros((5,4))
 horizons = ["0","4","24","168","8760"]
 
@@ -48,6 +48,7 @@ plt.close("all")
 fig,axes = plt.subplots(2,2)
 horizons = ["0","4","24","168","8760*"]
 titles = ["(a) Solar PV 100MWp Down","(b) Wind 100MWp Down","(c) Aggregator 100MWp Down","(d) Demand 100MWp Up (SL = 50MW)"]
+plt.suptitle("Impact Forecast Horizon\nSimulation Time 720h, Reliability "+str(RELIABILITY)+"%")
 
 for k,source in enumerate([solar,wind,agg,demand]):
     
