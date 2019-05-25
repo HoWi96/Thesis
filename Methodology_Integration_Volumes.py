@@ -76,7 +76,7 @@ def bidVolume(df, TIME_TOTAL,TIME_HORIZON, TIME_GRANULARITY, VOLUME_GRANULARITY,
     #volume = f(reliability,interval)
     bid = []
     for i in range(0,int(TIME_TOTAL/TIME_GRANULARITY)):
-        interval = df[TIME_HORIZON][int(i*4*TIME_GRANULARITY):int((i+1)*4*TIME_GRANULARITY)]
+        interval = df[TIME_HORIZON][int(i*4*TIME_GRANULARITY):int((i+1)*4*TIME_GRANULARITY)+1]
         volume = calculateVolume(interval,errorbin,step,RELIABILITY)
         if volume < 0: 
             volume = 0
@@ -89,17 +89,18 @@ def bidVolume(df, TIME_TOTAL,TIME_HORIZON, TIME_GRANULARITY, VOLUME_GRANULARITY,
     bid2[bid2<VOLUME_MIN] = 0
     
     #Illustrate bidding
-    labelString =  ( str(TIME_HORIZON) + "h-Ahead Forecast,\n"
-                   + str(TIME_GRANULARITY) + "h Resolution,\n"
-                   + str(VOLUME_GRANULARITY) + "MW Resolution,\n"
-                   + str(VOLUME_MIN) + "MW Minimum,\n"
-                   + str(RELIABILITY*100) + "% Reliable")
+    labelString =  ( "--------------------------\n"
+                    + str(TIME_HORIZON) + "h-Ahead Forecast,\n"
+                    + str(TIME_GRANULARITY) + "h Resolution,\n"
+                    + str(VOLUME_GRANULARITY) + "MW Resolution,\n"
+                    + str(VOLUME_MIN) + "MW Minimum,\n"
+                    + str(RELIABILITY*100) + "% Reliable")
     
     plt.plot(np.arange(0,TIME_TOTAL,0.25),
              bid2, 
              label = labelString,
              linestyle = "-", 
-             linewidth=2.5)
+             linewidth=1)
     
     #Return bidding
     return bid2
@@ -151,23 +152,24 @@ if __name__ == "__main__":
     
     # REFERENCE PRODUCTION
     realTime = df[0][:TIME_TOTAL*4]
-    plt.plot(np.arange(0,TIME_TOTAL,0.25), realTime, label = "Real-Time Production",linestyle = ":",linewidth=2.5)
+    plt.plot(np.arange(0,TIME_TOTAL,0.25), realTime, label = "Realtime Generation",linestyle = ":",linewidth=1.5)
     
     # REFERENCE FORECAST
-    TIME_HORIZON = 24
-    forecast = df[TIME_HORIZON][:TIME_TOTAL*4]
-    plt.plot(np.arange(0,TIME_TOTAL,0.25), forecast, label = str(TIME_HORIZON)+"h-Ahead Forecast",linestyle = "--",linewidth=2.5)
+#    TIME_HORIZON = 24
+#    forecast = df[TIME_HORIZON][:TIME_TOTAL*4]
+#    plt.plot(np.arange(0,TIME_TOTAL,0.25), forecast, label = "--------------------------\n"+str(TIME_HORIZON)+"h-Ahead Forecast",linestyle = "-",linewidth=1)
     
     #SPECIFICATIONS
-    #volume = bidVolume(df, TIME_TOTAL, 24, 0.25, 0.01, 0.01, 0.90)
-    #volume = bidVolume(df, TIME_TOTAL, 24, 12.00, 0.01, 0.01, 0.90)
-    volume = bidVolume(df, TIME_TOTAL, 24, 12.00, 1, 5, 0.90)
+    #volume = bidVolume(df, TIME_TOTAL, 24, 0.25, 0.01, 0.01, 0.95)
+    #volume = bidVolume(df, TIME_TOTAL, 24, 12.00, 0.01, 0.01, 0.95)
+    volume = bidVolume(df, TIME_TOTAL, 24, 12.00, 1, 5, 0.95)
     
     plt.legend()
     plt.xlabel("Time [h]")
     plt.ylabel("Volume [MW]")
     plt.ylim((0,100))
-    plt.title("Downward Reserves 100MWp Wind\n\n"+"Time Total "+str(TIME_TOTAL)+"h")
+    plt.title("Downward Reserves 100MWp Wind, "+"Time Total "+str(TIME_TOTAL)+"h")
+    plt.legend(bbox_transform=plt.gcf().transFigure)
     
     print("\a")
     print("STOP Methodology Intergation Volumes")

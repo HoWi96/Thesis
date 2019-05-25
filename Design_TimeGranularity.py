@@ -40,7 +40,7 @@ volume = np.zeros((TIME_GRANULARITY.size,4))
 
 for i,gran in enumerate(TIME_GRANULARITY):
     for k in range(0,TIME_GROUPS[i]):
-        volume[i] += np.array(df[int(k*4*gran):int((k+1)*4*gran)].quantile((100-RELIABILITY)/100))
+        volume[i] += np.array(df[int(k*4*gran):int((k+1)*4*gran)+1].quantile((100-RELIABILITY)/100))
     volume[i] = volume[i]/TIME_GROUPS[i] #taking the mean
     
 volumedf = pd.DataFrame(index = TIME_GRANULARITY,

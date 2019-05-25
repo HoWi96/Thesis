@@ -70,7 +70,7 @@ reliability = 1-np.arange(0,1+step/2,step)
 volumeReliability = np.zeros((reliability.shape[0],4))
 
 #[solar,wind,agg,demand]
-for idx,df in enumerate([solar]):
+for idx,df in enumerate([solar,wind,agg,demand]):
     print("Processing Source "+str(idx))
     
     # (1) Initialize errorbins
@@ -94,7 +94,7 @@ for idx,df in enumerate([solar]):
         
         #loop over intervals
         for i in range(0,int(TIME_TOTAL/TIME_GRANULARITY)):
-            interval = df[TIME_HORIZON][int(i*4*TIME_GRANULARITY):int((i+1)*4*TIME_GRANULARITY)]
+            interval = df[TIME_HORIZON][int(i*4*TIME_GRANULARITY):int((i+1)*4*TIME_GRANULARITY)+1]
             volume = calculateVolume(interval,errorbin,step,rel)
             if volume < 0: 
                 volume = 0
@@ -185,15 +185,16 @@ if TENNET == 1:
     
 else:
     print("Elia 2020 selected")
-    #Activation Frequency
+    #Bids
+    CAPACITY_REMUNERATION = 6 #EUR/MW/h
+    ACTIVATION_REMUNERATION = 120 #EUR/MWh/activation
+    
+    #Market Parameters
     ACTIVATIONS = 4 #activations/M
     ACTIVATION_DURATION = 4#h
+    ACTIVATION_PENALTY = 150 #EUR/MWh/activation
     CAPACITY_DURATION = 720#h
     
-    #financials
-    CAPACITY_REMUNERATION = 6 #EUR/MW/h
-    ACTIVATION_REMUNERATION = 150 #EUR/MWh/activation
-    ACTIVATION_PENALTY = 100 #EUR/MWh/activation
     
     #capacity remuneration on the full volume bid
     capacityRemuneration =      CAPACITY_DURATION*CAPACITY_REMUNERATION*volumes
@@ -214,9 +215,10 @@ else:
     activationRevenues = ACTIVATIONS*np.matmul(np.diag(1-(1-reliability)**3),activationRemuneration)
     activationCosts =    ACTIVATIONS*np.matmul(np.diag(1-(1-reliability)**3),
                                                np.matmul(np.diag(1-reliability),activationPenalty))
+                                               
 
 #revenues
-revenues = capacityRevenues - capacityCosts + activationRevenues - activationCosts 
+revenues = capacityRevenues + activationRevenues - activationCosts  - capacityCosts
     
 #%%########################
 # ILLUSTRATE
@@ -227,10 +229,10 @@ titles = ["(a) Solar PV 100MWp Down",
           "(d) Demand 100MWp Up (SL = 30MW)"]
 
 for k,source in enumerate(volumes.transpose()):
-    axes[int(k/2),k%2].plot(reliability, capacityRevenues[:,k]/10**3, label = "Capacity Remuneration")
-    axes[int(k/2),k%2].plot(reliability, activationRevenues[:,k]/10**3, label = "Activation Remuneration")
-    axes[int(k/2),k%2].plot(reliability, activationCosts[:,k]/10**3, label = "Activation Penalty")
-    axes[int(k/2),k%2].plot(reliability, revenues[:,k]/10**3, label = "Expected revenues")
+    axes[int(k/2),k%2].plot(reliability, capacityRevenues[:,k]/10**3, label = "Capacity Remuneration",linestyle = ":",linewidth=2)
+    axes[int(k/2),k%2].plot(reliability, activationRevenues[:,k]/10**3, label = "Activation Remuneration",linestyle = ":",linewidth=2)
+    axes[int(k/2),k%2].plot(reliability, (capacityCosts[:,k]+activationCosts[:,k])/10**3, label = "Activation Penalty",linestyle = ":",linewidth=2)
+    axes[int(k/2),k%2].plot(reliability, revenues[:,k]/10**3, label = "Revenues",linewidth=2.5)
     
     axes[int(k/2),k%2].set_xlabel("Reliability")
     axes[int(k/2),k%2].set_ylabel("Revenues [k€/Month]")
