@@ -8,56 +8,52 @@ Created: May 2019
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
+import PreprocessData as pre
 
-solarRaw = pd.read_csv("Data/SolarForecastJune2017.csv")["RealTime"]
-windRaw = pd.read_csv("Data/WindForecastJune2017.csv")["RealTime"]
-demandRaw = pd.read_csv("Data/LoadForecastJune2017.csv")["RealTime"]
+solarRaw,windRaw,demandRaw,allRaw2016 = pre.importData()
+solar,wind,agg,demand = pre.preprocessData(solarRaw,windRaw,demandRaw,allRaw2016)
+df = pd.DataFrame(data={"solar":solar["0"],"wind":wind["0"],"agg":agg["0"],"demand":demand["0"]})
 
-#%% Preprocess Data Data
+#%% PROCESS
 
-WINDINSTALLED = 2403.17
-SOLARINSTALLED = 2952.78
-DEMANDPEAK = 11742.29  
+#initialize
+granularities = np.arange(0,5,0.01)
+volumeRes = np.zeros((granularities.shape[0],4))
+volumeMin = np.zeros((granularities.shape[0],4))
 
-solar = solarRaw*100/SOLARINSTALLED
-wind = windRaw*100/WINDINSTALLED
-demand = demandRaw*100/DEMANDPEAK-30
-agg = solar*0.25 + wind*0.75
-x = np.arange(0,5,0.01)
+#compute
+for i,source in enumerate(["solar","wind","agg","demand"]):
+    for j,size in enumerate(granularities):
+        volumeRes[j,i] = (df[source]-df[source]%size).mean()
+        volumeMin[j,i] = np.array(df[source][df[source]>size]).sum()/df[source].shape[0]
+        print(np.array(df[source][df[source]>size]).shape)
 
+#%% ILLUSTRATE
+
+#initialize
 plt.close("all")
-fig, axes = plt.subplots(2,1)
+xlabels = ['Volume Granularity [$\Delta$MW]','Volume Minimum [MW]']
+suptitles = ["Impact Volume Resolution\nSimulation Time 720h","Impact Volume Minimum\nSimulation Time 720h"]
 
-#Calculate botht the impact on the minimum and the resolution
-for i,data in enumerate([solar,wind,agg,demand]):
-
-    volume = pd.DataFrame(index = x, data={"gran":np.zeros(x.shape),"min":np.zeros(x.shape)})
-
-    for j,size in enumerate(x):
-        volume["gran"][j] = (data%size).mean()
-        volume["min"][j] = data[data<size].sum()/data.shape[0]
+for i,volume in enumerate([volumeRes,volumeMin]):
+    fig,axes = plt.subplots(2,2)
+    titles = ["(a) Solar PV 100MWp Down","(b) Wind 100MWp Down","(c) Aggregator 100MWp Down","(d) Demand 100MWp Up (SL = 50MW)"]
+    plt.suptitle(suptitles[i])
+    
+    #compute
+    for k,source in enumerate(["solar","wind","agg","demand"]):
         
-    axes[0].plot(volume["gran"],linewidth=2)
-    axes[1].plot(volume["min"].fillna(0),linewidth=2)
-  
-titles = ["(a) Solar PV 100MWp Down","(b) Wind 100MWp Down","(c) Aggregator 100MWp Down","(d) Demand 100MWp Up (SL = 30MW)"]
-
-#Add labels to the axes 
-axes[0].legend(titles)
-axes[0].set_xlabel('Volume Granularity [$\Delta$MW]')
-axes[0].set_ylabel('Lost Volume [MW]')
-axes[0].set_xlim(0,5)
-axes[0].set_title('Lost Volume Versus Volume Granularity')
-
-axes[1].legend(titles)
-axes[1].set_xlabel('Volume Minimum [MW]')
-axes[1].set_ylabel('Lost Volume [MW]')
-axes[1].set_xlim(0,5)
-axes[1].set_title('Lost Volume Versus Volume Minimum')
-
-fig.suptitle("Volume Constraints"+"\nMean Effective Volume"+
-             " (a) "+str(round(solar.mean(),1))+"MW"+
-             " (b) "+str(round(wind.mean(),1))+"MW"+
-             " (c) "+str(round(agg.mean(),1))+"MW"+
-             " (d) "+str(round((demand).mean(),1))+"MW")
-
+        #mean bid volume
+        MBV = volume[:,k]
+        
+        #mean effective volume
+        MEV = np.ones(len(granularities))*df[source].mean()
+        
+        axes[int(k/2),k%2].plot(granularities,MBV,linewidth=1.5)
+        axes[int(k/2),k%2].plot(granularities,MEV,linewidth=1.5)
+        axes[int(k/2),k%2].fill_between(granularities,MBV,MEV,color = "orange",alpha = 0.1)
+        axes[int(k/2),k%2].legend(("Mean Bid Volume", "Mean Effective Volume","Mean Lost Volume"))
+        axes[int(k/2),k%2].set_xlabel(xlabels[i])
+        axes[int(k/2),k%2].set_ylabel('Bid Volume [MW]')
+        axes[int(k/2),k%2].set_ylim(0,32)
+        axes[int(k/2),k%2].set_title(titles[k]) 
