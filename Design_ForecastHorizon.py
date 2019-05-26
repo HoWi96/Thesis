@@ -5,7 +5,7 @@ Created on Mon Mar  4 17:45:52 2019
 @author: HoWi96
 """
 #IMPORTS
-
+import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 import PreprocessData as pre
@@ -13,16 +13,18 @@ import PreprocessData as pre
 #PREPROCESS
 solarRaw,windRaw,demandRaw,allRaw2016 = pre.importData()
 solar,wind,agg,demand = pre.preprocessData(solarRaw,windRaw,demandRaw,allRaw2016)
+df0 = pd.DataFrame(data={"solar":solar["0"],"wind":wind["0"],"agg":agg["0"],"demand":demand["0"],
+                        "solar25":solar["0"]*0.25,"wind75":wind["0"]*0.75})
 
 #%%PROCESS
 
 #initialize
 RELIABILITY = 95
-bidVolume = np.zeros((5,4))
 horizons = ["0","4","24","168","8760"]
+volume = np.zeros((len(horizons),df0.shape[1]))
 
 #compute
-for j,source in enumerate([solar,wind,agg,demand]):
+for j,source in enumerate([solar,wind,agg,demand,solar*0.25,wind*0.75]):
     for i,horizon in enumerate(horizons):
         df = source[horizon]
         new = np.zeros(df.shape)
@@ -40,23 +42,27 @@ for j,source in enumerate([solar,wind,agg,demand]):
         for k,vol in enumerate(source[horizon]):
             volRefError = errorbin[vol-vol%step]
             new[k] =  vol + volRefError.quantile((100-RELIABILITY)/100)
-        bidVolume[i,j] = np.mean(new)
+        volume[i,j] = np.mean(new)
 
 #%% ILLUSTRATE
 
+#initialize
+titles = ["(a) Solar PV 100MWp Down","(b) Wind 100MWp Down","(c) Aggregator 100MWp Down","(d) Demand 100MWp Up (SL = 50MW)"]
+suptitle = (r"$\bf Impact \: Forecast \: Horzion$"+"\nSimulation Time 720h\n"+ "0h-Ahead Forecast, "+ "95% Reliability, "+ "0.01$\Delta$MW Resolution, "+ "0.01MW Minimum ")
+
+#compute
 plt.close("all")
 fig,axes = plt.subplots(2,2)
-horizons = ["0","4","24","168","8760*"]
-titles = ["(a) Solar PV 100MWp Down","(b) Wind 100MWp Down","(c) Aggregator 100MWp Down","(d) Demand 100MWp Up (SL = 50MW)"]
-plt.suptitle("Impact Forecast Horizon\nSimulation Time 720h, Reliability "+str(RELIABILITY)+"%")
+plt.suptitle(suptitle)
 
-for k,source in enumerate([solar,wind,agg,demand]):
+#iterate over sources
+for k,source in enumerate(["solar","wind","agg","demand"]):
     
     #mean bid volume
-    MBV = bidVolume[:,k]
+    MBV = volume[:,k]
     
     #mean effective volume
-    MEV = np.ones(len(horizons))*source["0"].mean()
+    MEV = np.ones(len(horizons))*df0[source].mean()
     
     axes[int(k/2),k%2].plot(horizons,MBV,linewidth=1.5)
     axes[int(k/2),k%2].plot(horizons,MEV,linewidth=1.5)
@@ -64,5 +70,13 @@ for k,source in enumerate([solar,wind,agg,demand]):
     axes[int(k/2),k%2].legend(("Mean Bid Volume", "Mean Effective Volume","Mean Lost Volume"))
     axes[int(k/2),k%2].set_xlabel('Forecast Horizon [h]')
     axes[int(k/2),k%2].set_ylabel('Bid Volume [MW]')
-    axes[int(k/2),k%2].set_ylim(0,32)
+    axes[int(k/2),k%2].set_ylim(0,31)
     axes[int(k/2),k%2].set_title(titles[k]) 
+    
+    #mean added volume
+    if source == "agg":
+        reference = volume[:,4]+volume[:,5]
+        
+        axes[int(k/2),k%2].plot(horizon,reference,linewidth=1.5,linestyle ='--')
+        axes[int(k/2),k%2].fill_between(horizon,MBV,reference,color = "green",alpha = 0.2)
+        axes[int(k/2),k%2].legend(("Mean Bid Volume", "Mean Effective Volume","Mean Seperated Volume","Mean Lost Volume","Mean Added Volume"))

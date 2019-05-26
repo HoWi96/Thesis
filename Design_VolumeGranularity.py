@@ -4,12 +4,13 @@ Created: May 2019
 @author: Holger
 """
 
-#%%IMPORTS
+#IMPORTS
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 import PreprocessData as pre
 
+#PREPROCESS
 solarRaw,windRaw,demandRaw,allRaw2016 = pre.importData()
 solar,wind,agg,demand = pre.preprocessData(solarRaw,windRaw,demandRaw,allRaw2016)
 df = pd.DataFrame(data={"solar":solar["0"],"wind":wind["0"],"agg":agg["0"],"demand":demand["0"],
