@@ -4,49 +4,26 @@ Created on 27/04/2019
 @author: Holger
 """
 
-#%% IMPORTS
-
-import pandas as pd
+#IMPORTS
 import numpy as np
 import matplotlib.pyplot as plt
 from Methodology_Integration_Volumes import calculateVolume
+import PreprocessData as pre
 
-solarRaw = pd.read_csv("Data/SolarForecastJune2017.csv")
-windRaw = pd.read_csv("Data/WindForecastJune2017.csv")
-demandRaw = pd.read_csv("Data/LoadForecastJune2017.csv")
-allRaw2016 = pd.read_csv("Data/data2016.csv")
+solarRaw,windRaw,demandRaw,allRaw2016 = pre.importData()
+solar,wind,agg,demand = pre.preprocessData(solarRaw,windRaw,demandRaw,allRaw2016)
 
-print("START Case TenneT")
-
-#%% DATA PREPROCESSING
-
-WIND_INST = 2403.17
-SOLAR_INST= 2952.78
-DEMAND_PK= 11742.29
-WIND_INST2016 = 1960.91
-SOLAR_INST2016= 2952.78
-DEMAND_PK2016 = 11589.6
-
-#Preprocess data
-solar = solarRaw.loc[:, solarRaw.columns != "DateTime"]*100/SOLAR_INST
-solar[str(8760)] = allRaw2016["solar"]*100/SOLAR_INST2016
-
-wind = windRaw.loc[:, windRaw.columns != "DateTime"]*100/WIND_INST
-wind[str(8760)] = allRaw2016["wind"]*100/WIND_INST2016
-
-demand = demandRaw.loc[:, demandRaw.columns != "DateTime"]*100/DEMAND_PK
-demand[str(8760)] = allRaw2016["load"]*100/DEMAND_PK2016
-demand = demand - 30 #shedding limit
-
-agg = solar*0.25+wind*0.75
-
-#%%#####################
-########################
+#%%#####################################################################
 # VOLUMES 
-########################
-########################
-TENNET = 0
+########################################################################
 
+#%%PROCESS
+print("Process Volumes")
+
+#Initialize---------
+
+#cases
+TENNET = 1
 if TENNET == 1:
     #Constraints
     TIME_GRANULARITY = 720#h
@@ -62,14 +39,15 @@ else:
 #Product Characteristics
 TIME_TOTAL = int(solar.shape[0]/4)#h
 TIME_GROUPS = int(TIME_TOTAL/TIME_GRANULARITY)
-########################
 
 #quantiles
-step = 0.1
+step = 0.2
 reliability = 1-np.arange(0,1+step/2,step)
-volumeReliability = np.zeros((reliability.shape[0],4))
+bidVolume = np.zeros((reliability.shape[0],4))
 
-#[solar,wind,agg,demand]
+#Compute------------------
+
+#iterate over all sources
 for idx,df in enumerate([solar,wind,agg,demand]):
     print("Processing Source "+str(idx))
     
@@ -80,7 +58,7 @@ for idx,df in enumerate([solar,wind,agg,demand]):
     minbin = round(df[TIME_HORIZON].min()- df[TIME_HORIZON].min()%step)
     maxbin = df[TIME_HORIZON].max()
     
-    # (2) Create Errorbins
+    # (2) Compute Errorbins
     for i,x in enumerate(np.arange(minbin,maxbin,step)):
         indexbin[x] = np.where(np.column_stack((df[TIME_HORIZON]>(x-step*1.5),df[TIME_HORIZON]<(x+step*1.5))).all(axis=1))[0]
         errorbin[x] = df[str(0)][indexbin[x]]-df[TIME_HORIZON][indexbin[x]]
@@ -106,54 +84,54 @@ for idx,df in enumerate([solar,wind,agg,demand]):
         # (5) Adjust to volume minimum
         bid2[bid2<VOLUME_MIN] = 0
         
-        # (6) Take mean for reliability
-        volumeReliability[k,idx] = bid2.mean()
+        # (6) Take volume mean
+        bidVolume[k,idx] = bid2.mean()
     
-#%%########################
-# ILLUSTRATE
-        
-print("Processing illustration")
+#%%ILLUSTRATE
+print("Illustrate Volumes")
 
-##Reference Case Of ideal market
+#initialize
 plt.close("all")
-plt.figure()
+fig,axes = plt.subplots(2,2)
+titles = ["(a) Solar PV 100MWp Down","(b) Wind 100MWp Down","(c) Aggregator 100MWp Down","(d) Demand 100MWp Up (SL = 50MW)"]
+plt.suptitle("Case TenneT 2018\nSimulation Time "+ str(TIME_TOTAL) + "h\n"+
+             str(TIME_HORIZON) + "h-Ahead Forecast, " +
+             str(TIME_GRANULARITY) + "h Resolution, " +
+             str(VOLUME_GRANULARITY) + "MW Resolution, " +
+             str(VOLUME_MIN) + "MW Minimum ")
 
-for idx,df in enumerate([solar,wind,agg,demand]):
-    plt.plot(reliability*100,volumeReliability[:,idx])
+#compute
+for k,source in enumerate([solar,wind,agg,demand]):
 
-#Illustrate bidding
+    #mean bid volume
+    MBV = bidVolume[:,k]
+    
+    #mean effective volume
+    MEV = np.ones(reliability.shape)*source["0"].mean()
+    
+    #Reliable bid volume
+    RBV = np.ones(reliability.shape)*bidVolume[0,k]
+    
+    axes[int(k/2),k%2].plot(reliability*100,MBV,linewidth=1.5)
+    axes[int(k/2),k%2].plot(reliability*100,MEV,linewidth=1.5)
+    axes[int(k/2),k%2].plot(reliability*100,RBV,linewidth=1.5,linestyle = "--",color = "red")
+    #axes[int(k/2),k%2].fill_between(reliability*100,MBV,MEV,color = "blue",alpha = 0.1)
+    axes[int(k/2),k%2].fill_between(reliability*100,MBV,RBV,color = "orange",alpha = 0.1)
+    axes[int(k/2),k%2].legend(("Mean Bid Volume", "Mean Effective Volume","Reliable Volume","Virtual Volume"))
+    axes[int(k/2),k%2].set_xlabel('Reliability [%]')
+    axes[int(k/2),k%2].set_ylabel('Bid Volume [MW]')
+    axes[int(k/2),k%2].set_ylim(0,50)
+    axes[int(k/2),k%2].set_title(titles[k]) 
 
-titles = ["(a) Solar PV 100MWp Down",
-          "(b) Wind 100MWp Down",
-          "(c) Aggregator 100MWp Down",
-          "(d) Demand 100MWp Up (SL = 30MW)"]
-plt.legend(titles)
-plt.xlabel('Reliability [%]')
-plt.ylabel('Volume [MW]')
-plt.xlim((0,100))
-plt.ylim(0)
-plt.title("TenneT mFRR 20XX\n\n"+
-          str(TIME_HORIZON) + "h-Ahead Forecast, " +
-          str(TIME_GRANULARITY) + "h Resolution, " +
-          str(VOLUME_GRANULARITY) + "MW Resolution, " +
-          str(VOLUME_MIN) + "MW Minimum, " +
-          str(TIME_TOTAL) + "h Total Time")
+#%%#####################################################################
+# FINANCIALS
+########################################################################
 
-col = ['C0', 'C1', 'C2', 'C3']
-for idx,df in enumerate([solar,wind,agg,demand]):
-    plt.plot(reliability*100,np.ones(reliability.shape)*df[str(0)].mean(),linestyle = "--",color = col[idx])
-
-#%%#####################
-########################
-# FINANCIALS 
-########################
-########################
-
-print("START Financials")
-
+#%% PROCESS
+print("Process Financials")
 
 reliability = reliability
-volumes = volumeReliability
+volumes = bidVolume
 
 if TENNET == 1:
     print("TenneT 2018 selected")
@@ -198,7 +176,7 @@ else:
     
     #capacity remuneration on the full volume bid
     capacityRemuneration =      CAPACITY_DURATION*CAPACITY_REMUNERATION*volumes
-    capacityRemuneration100 =   np.tile(CAPACITY_DURATION*CAPACITY_REMUNERATION*volumes[0,:],(11,1))
+    capacityRemuneration100 =   np.tile(CAPACITY_DURATION*CAPACITY_REMUNERATION*volumes[0,:],(volumes.shape[0],1))
     
     #activation remuneration on the full volume bid
     activationRemuneration =    ACTIVATION_DURATION*ACTIVATION_REMUNERATION*volumes
@@ -220,8 +198,9 @@ else:
 #revenues
 revenues = capacityRevenues + activationRevenues - activationCosts  - capacityCosts
     
-#%%########################
-# ILLUSTRATE
+#%% ILLUSTRATE
+print("Illustrate Financials")
+
 fig,axes = plt.subplots(2,2)
 titles = ["(a) Solar PV 100MWp Down",
           "(b) Wind 100MWp Down",
@@ -254,5 +233,5 @@ for k,source in enumerate(volumes.transpose()):
                                     )
 
     
-print("STOP Financials")
+print("Finished Case Study")
 print("\a")
