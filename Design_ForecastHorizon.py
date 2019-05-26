@@ -48,7 +48,7 @@ for j,source in enumerate([solar,wind,agg,demand,solar*0.25,wind*0.75]):
 
 #initialize
 titles = ["(a) Solar PV 100MWp Down","(b) Wind 100MWp Down","(c) Aggregator 100MWp Down","(d) Demand 100MWp Up (SL = 50MW)"]
-suptitle = (r"$\bf Impact \: Forecast \: Horzion$"+"\nSimulation Time 720h\n"+ "0h-Ahead Forecast, "+ "95% Reliability, "+ "0.01$\Delta$MW Resolution, "+ "0.01MW Minimum ")
+suptitle = (r"$\bf Impact \: Forecast \: Horzion$"+"\nSimulation Time 720h\n"+ "0.25$\Delta$h Resolution, "+ "95% Reliability, "+ "0.01$\Delta$MW Resolution, "+ "0.01MW Minimum ")
 
 #compute
 plt.close("all")
@@ -77,6 +77,7 @@ for k,source in enumerate(["solar","wind","agg","demand"]):
     if source == "agg":
         reference = volume[:,4]+volume[:,5]
         
-        axes[int(k/2),k%2].plot(horizon,reference,linewidth=1.5,linestyle ='--')
-        axes[int(k/2),k%2].fill_between(horizon,MBV,reference,color = "green",alpha = 0.2)
+        axes[int(k/2),k%2].plot(horizons,reference,linewidth=1.5,linestyle ='--')
+        axes[int(k/2),k%2].fill_between(horizons,MBV,reference,color = "green",alpha = 0.2)
         axes[int(k/2),k%2].legend(("Mean Bid Volume", "Mean Effective Volume","Mean Seperated Volume","Mean Lost Volume","Mean Added Volume"))
+        
