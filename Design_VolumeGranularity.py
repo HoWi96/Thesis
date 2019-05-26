@@ -19,35 +19,37 @@ dfArray = np.array(df)
 #%% PROCESS
 
 #initialize
-granularities = np.arange(0.01,5,0.01)
-volumeRes = np.zeros((granularities.shape[0],dfArray.shape[1]))
-volumeMin = np.zeros((granularities.shape[0],dfArray.shape[1]))
+granularities = np.arange(0.01,5.01,0.01)
+volumeRes = np.zeros((granularities.shape[0],df.shape[1]))
+volumeMin = np.zeros((granularities.shape[0],df.shape[1]))
 
 #compute
 for j,gran in enumerate(granularities):
     
     #compute volume resolution
-    volumeRes[j,:] = (dfArray-dfArray%gran).mean(axis=0)
+    volumeRes[j,:] = (df-df%gran).mean()
     
     #compute volume minimum
-    dfArrayCopy = dfArray.copy()
-    np.place(dfArrayCopy,[dfArray<gran],0)
-    volumeMin[j,:] = dfArrayCopy.mean(axis=0)
+    volumeMin[j,:] = df.where(df>gran,0).mean()
 
 #%% ILLUSTRATE
 
 #initialize
-plt.close("all")
 xlabels = ['Volume Resolution [$\Delta$MW]','Volume Minimum [MW]']
-suptitles = [(r"$\bf Impact \: Volume \: Resolution$"+"\nSimulation Time 720h\n"+ "0h-Ahead Forecast, "+ "0.25$\Delta$h Resolution, "+ " - % Reliability, "+ "0.01MW Minimum "),
-             (r"$\bf Impact \: Volume \: Minimum$"   +"\nSimulation Time 720h\n"+ "0h-Ahead Forecast, "+ "0.25$\Delta$h Resolution, "+ " - % Reliability, "+ "0.01$\Delta$MW Resolution")]
-
+titles = ["(a) Solar PV 100MWp Down","(b) Wind 100MWp Down","(c) Aggregator 100MWp Down","(d) Demand 100MWp Up (SL = 50MW)"]
+suptitles = [(r"$\bf Impact \: Volume \: Resolution$"+"\nSimulation Time 720h\n"+ "0h-Ahead Forecast, "+ "0.25$\Delta$h Resolution, "+ "-% Reliability, "+ "0.01MW Minimum "),
+             (r"$\bf Impact \: Volume \: Minimum$"   +"\nSimulation Time 720h\n"+ "0h-Ahead Forecast, "+ "0.25$\Delta$h Resolution, "+ "-% Reliability, "+ "0.01$\Delta$MW Resolution")]
+    
 #compute
+plt.close("all")
+
+#iterate over volumes
 for i,volume in enumerate([volumeRes,volumeMin]):
+    #compute
     fig,axes = plt.subplots(2,2)
-    titles = ["(a) Solar PV 100MWp Down","(b) Wind 100MWp Down","(c) Aggregator 100MWp Down","(d) Demand 100MWp Up (SL = 50MW)"]
     plt.suptitle(suptitles[i])
     
+    #iterate over sources
     for k,source in enumerate(["solar","wind","agg","demand"]):
         
         #mean bid volume
@@ -62,7 +64,7 @@ for i,volume in enumerate([volumeRes,volumeMin]):
         axes[int(k/2),k%2].legend(("Mean Bid Volume", "Mean Effective Volume","Mean Lost Volume"))
         axes[int(k/2),k%2].set_xlabel(xlabels[i])
         axes[int(k/2),k%2].set_ylabel('Bid Volume [MW]')
-        axes[int(k/2),k%2].set_ylim(0,32)
+        axes[int(k/2),k%2].set_ylim(0,31)
         axes[int(k/2),k%2].set_title(titles[k]) 
         
         #mean added volume
