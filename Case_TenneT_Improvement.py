@@ -117,12 +117,12 @@ for k,source in enumerate(["solar","wind","agg","demand"]):
     #Reliable bid volume
     RBV = np.ones(reliability.shape)*bidVolume[0,k]
     
-    axes[int(k/2),k%2].plot(reliability*100,MBV,linewidth=1.5)
-    axes[int(k/2),k%2].plot(reliability*100,MEV,linewidth=1,linestyle = "--")
-    axes[int(k/2),k%2].plot(reliability*100,RBV,linewidth=1,linestyle = "--",color = "red")
-    axes[int(k/2),k%2].fill_between(reliability*100,MBV,RBV,color = "orange",alpha = 0.1)
+    axes[int(k/2),k%2].plot(reliability*100,MBV,linewidth=1.5,color = "C0")
+    axes[int(k/2),k%2].plot(reliability*100,MEV,linewidth=1,linestyle = "--",color = "C0")
+    axes[int(k/2),k%2].fill_between(reliability*100,MBV,RBV,color = "C0",alpha = 0.1)
+    axes[int(k/2),k%2].fill_between(reliability*100,0,RBV,color = "C1",alpha = 0.1)
     
-    axes[int(k/2),k%2].legend(("Mean Bid Volume", "Mean Effective Volume","Mean Reliable Volume","Mean Virtual Volume"))
+    axes[int(k/2),k%2].legend(("Mean Bid Volume", "Mean Effective Volume","Mean Unreliable Volume","Mean Reliable Volume"))
     axes[int(k/2),k%2].set_xlabel('Reliability [%]')
     axes[int(k/2),k%2].set_ylabel('Bid Volume [MW]')
     axes[int(k/2),k%2].set_ylim(0,44)
@@ -132,11 +132,11 @@ for k,source in enumerate(["solar","wind","agg","demand"]):
     if source == "agg":
         reference = bidVolume[:,4]+bidVolume[:,5]
         
-        axes[int(k/2),k%2].plot(reliability*100,reference,linewidth=1,linestyle ='--')
-        axes[int(k/2),k%2].fill_between(reliability*100,MBV,reference,color = "green",alpha = 0.2)
-        axes[int(k/2),k%2].legend(("Mean Bid Volume", "Mean Effective Volume","Mean Reliable Volume","Mean Seperated Volume","Mean Virtual Volume","Mean Added Volume"))
-
-
+        axes[int(k/2),k%2].fill_between(reliability*100,MBV,reference,color = "C2",alpha = 0.2)
+        axes[int(k/2),k%2].legend(("Mean Bid Volume", "Mean Effective Volume","Mean Unreliable Volume","Mean Reliable Volume","Mean Added Volume"))
+        axes[int(k/2),k%2].plot(reliability*100,reference,linewidth=1,linestyle ='--',color = "C2")
+        
+    axes[int(k/2),k%2].plot(reliability*100,RBV,linewidth=1,linestyle = "--",color = "C1")
 #%%#####################################################################
 # FINANCIALS
 ########################################################################
@@ -144,9 +144,11 @@ for k,source in enumerate(["solar","wind","agg","demand"]):
 #%% PROCESS
 print("Process Financials")
 
+#initialize
 reliability = reliability
 volumes = bidVolume
 
+#compute
 if TENNET == 1:
     #Activation Frequency
     ACTIVATIONS = 2/12 #activations/M
