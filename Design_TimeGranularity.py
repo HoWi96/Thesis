@@ -12,7 +12,7 @@ import PreprocessData as pre
 
 solarRaw,windRaw,demandRaw,allRaw2016 = pre.importData()
 solar,wind,agg,demand = pre.preprocessData(solarRaw,windRaw,demandRaw,allRaw2016)
-df = pd.DataFrame(data={"solar":solar["0"],"wind":wind["0"],"agg":agg["0"],"demand":demand["0"]})
+df = pd.DataFrame(data={"solar":solar["0"],"wind":wind["0"],"solar25":solar["0"]*0.25,"wind75":wind["0"]*0.75,"agg":agg["0"],"demand":demand["0"]})
 
 #%% PROCESS 
 
@@ -56,3 +56,10 @@ for k,source in enumerate([solar,wind,agg,demand]):
     axes[int(k/2),k%2].set_ylabel('Bid Volume [MW]')
     axes[int(k/2),k%2].set_ylim(0,32)
     axes[int(k/2),k%2].set_title(titles[k]) 
+    
+    if source == "agg":
+        reference = volume[:,4]+volume[:,5]
+        
+        axes[int(k/2),k%2].plot(granularities,reference,linewidth=1.5,linestyle ='--')
+        axes[int(k/2),k%2].fill_between(granularities,MBV,reference,color = "green",alpha = 0.2)
+        axes[int(k/2),k%2].legend(("Mean Bid Volume", "Mean Effective Volume","Sources Seperated","Mean Lost Volume","Added Volume"))
