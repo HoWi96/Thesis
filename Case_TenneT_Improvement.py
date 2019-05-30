@@ -26,7 +26,7 @@ print("Process Volumes")
 #Initialize---------
 
 #cases
-TENNET = 1
+TENNET = 0
 if TENNET == 1:
     print("TenneT 2018 selected")
     #Constraints
@@ -34,6 +34,8 @@ if TENNET == 1:
     TIME_HORIZON = str(8760)#h
     VOLUME_GRANULARITY = 5#MW
     VOLUME_MIN = 20#MW
+    suptitle = (r"$\bf Case \: TenneT \: 2018$"+"\nSimulation Time 720h\n"+
+            "8760h-Ahead Forecast, 720$\Delta$h Resolution, 5$\Delta$MW Resolution, 20MW Minimum ")
 else:
     print("Elia 2020 selected")
     TIME_GRANULARITY = 4#h
@@ -145,16 +147,8 @@ for k,source in enumerate(["solar","wind","agg","demand"]):
 print("Process Financials")
 
 #initialize
-#reliability = reliability
-#volumes = bidVolume
-step = 0.2
-reliability = 1-np.arange(0,1+step/2,step)
-volumes = np.array([[  5.79444444,  10.78888889,  10.02222222,  18.79444444, 1.06111111, 7.7],
-                   [ 13.46666667,  19.33333333,  18.7       ,  26.33888889,3.23333333,  14.37222222],
-                   [ 17.42222222,  21.97222222,  21.11666667,  28.30555556,4.16666667,  16.36111111],
-                   [ 21.58333333,  24.34444444,  23.39444444,  30.4       ,5.06666667,  18.18333333],
-                   [ 26.31111111,  27.41111111,  26.18333333,  32.83333333,6.32777778,  20.47222222],
-                   [ 39.47777778,  41.55555556,  38.52222222,  38.3       ,11.66666667,  31.67777778]])
+reliability = reliability
+volumes = bidVolume
 
 #compute
 if TENNET == 1:
@@ -220,7 +214,7 @@ else:
     capacityPenalty = CAPACITY_PENALTY/100*(capacityRemuneration-capacityRemuneration[0,:])
     
     #revenues
-    capacityRevenues =   np.matmul(np.diag(1-(1-reliability)**3), capacityRemuneration) + 0 * (1-reliability)**3
+    capacityRevenues =   np.matmul(np.diag(1-(1-reliability)**3), capacityRemuneration)
     capacityCosts =      np.matmul(np.diag(1-(1-reliability)**3), np.matmul(np.diag(1-reliability),capacityPenalty))
     activationRevenues = np.matmul(np.diag(1-(1-reliability)**3), ACTIVATIONS*np.matmul(np.diag(reliability),activationRemuneration))
     activationCosts =    np.matmul(np.diag(1-(1-reliability)**3), ACTIVATIONS*np.matmul(np.diag(1-reliability),activationPenalty))
@@ -244,6 +238,7 @@ for k,source in enumerate(["solar","wind","agg","demand"]):
     
     axes[int(k/2),k%2].set_xlabel("Reliability [%]")
     axes[int(k/2),k%2].set_ylabel("Revenues [k€/Month]")
+    axes[int(k/2),k%2].set_ylim(0,125)
     axes[int(k/2),k%2].set_title(titles[k])
     axes[int(k/2),k%2].legend(("Mean Revenues", "Mean Capacity Remuneration","Mean Activation Remuneration","Mean Activation Penalty"))
     

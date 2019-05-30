@@ -20,7 +20,7 @@ dfArray = np.array(df)
 #%% PROCESS
 
 #initialize
-granularities = np.arange(0.01,5.01,0.01)
+granularities = np.arange(0.01,10.01,0.01)
 volumeRes = np.zeros((granularities.shape[0],df.shape[1]))
 volumeMin = np.zeros((granularities.shape[0],df.shape[1]))
 
