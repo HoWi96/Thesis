@@ -7,18 +7,11 @@ Created on Sun May 26 23:34:08 2019
 import numpy as np
 import matplotlib.pyplot as plt
 
-TENNET = 0
-#%%#####################################################################
-# FINANCIALS
-########################################################################
-
 #%% PROCESS
-print("Process Financials")
+print("START monitoring design")
 
 #initialize
 titles = ["(a) Solar PV 100MWp Down","(b) Wind 100MWp Down","(c) Aggregator 100MWp Down","(d) Demand 100MWp Up (SL = 50MW)"]
-step = 0.05
-reliability = 1-np.arange(0,1+step/2,step)
 
 volumes = np.array([[  5.79444444,  10.78888889,  10.02222222,  18.79444444, 1.06111111,   7.7       ],
                     [  9.88333333,  16.        ,  15.66111111,  23.87777778,2.28888889,  11.86666667],
@@ -42,82 +35,81 @@ volumes = np.array([[  5.79444444,  10.78888889,  10.02222222,  18.79444444, 1.0
                    [ 32.08888889,  32.08333333,  30.38333333,  35.33333333,7.58888889,  24.06666667],
                    [ 39.47777778,  41.55555556,  38.52222222,  38.3       ,11.66666667,  31.67777778]])
 
+plt.close("all")
 fig,axes = plt.subplots(2,2)
+accuracy = 0.05
+reliabilities = 1-np.arange(0,1+0.01,accuracy)
+sensitivities = enumerate([-0.5,0,0.5,1.5,3])
 
-TESTS_ARRAY = [0,1,2,3]
-plt.suptitle("Net Revenues - Amount Availibility Tests\nReference = 1")
-#
-#ALLOWED_FAILS_ARRAY = [0,1,2,3,5,10]
-#plt.suptitle("Net Revenues - Allowed Fails")
-#
-#ACTIVATION_PENALTY_ARRAY = [10,40,70,100,130,160,200]
-#plt.suptitle("Net Revenues - Activation Penalty \n reference = 10")
+#parameter = "test"
+#plt.suptitle(r"$\bf Sensitivity \: Analysis \: of \: Test \: Frequency$"+"\nExpected Net Revenues "+"\nSimulation Time 720h, test = 1/month, Penalty = 4320€/missing MW")
 
-#ACTIVATION_DURATION_ARRAY = [1,2,4,8,16]
-#plt.suptitle("Net Revenues - Activation Duration\nReference = 4")
-
-#RATIO_MISSING_ARRAY = [1,1.3,1.6,1.9,2.2,2.5]
-#plt.suptitle("Net Revenues - Ratio Missing Volumes\nReference = 1.3")
+parameter = "penalty"
+plt.suptitle(r"$\bf Sensitivity \: Analysis \: of \: Test \: Penalty$"+"\nExpected Net Revenues "+"\nSimulation Time 720h, test = 1/month, Penalty = 4320€/missing MW")
 
 #compute
-for n,TESTS in enumerate(TESTS_ARRAY):
-    legend = TESTS
-    #PARAMETERS#############################
-    #Bids
-    CAPACITY_REMUNERATION = 6 #EUR/MW/h
-    ACTIVATION_REMUNERATION = 70 #EUR/MWh/activation
+for n,sensitivity in sensitivities:
+    print("sensitivity "+str(sensitivity))
     
-    #Market Parameters
-    ACTIVATIONS = 2/12 #activations/M
-    #TESTS = 12/12
-    ACTIVATION_DURATION = 4#h
-    CAPACITY_DURATION = 720#h
-    RATIO_MISSING = 1.30#
-    #ALLOWED_FAILS = 3
+    if parameter == "test":
+        legend = sensitivity*100
+        tests = 12/12*(1+sensitivity) #tests/month
+        factor = 1 #€/MWh
+    if parameter == "penalty":
+        legend = sensitivity*100
+        tests = 12/12 #tests/month
+        factor = 1*(1+sensitivity) #€/MWh
+        
+    #CONSTANTS#
+    bidCapacity = 6 #€/MW/h
+    bidEnergy = 120 #€/MWh
+    activations = 4/12 #activations/month
+    durationCapacity = 720 #hours/week
+    durationMonth = 720 #hours/month
+    durationActivation = 0.5 #hour
+    tariff = 120 #€/MWh
     
-    #External Determined
-    ACTIVATION_PENALTY = 100 #EUR/MWh/activation
+    #VOLUMES&RELIABILITY#
+    volumeCapacity = np.zeros(volumes.shape)
+    volumeMissing = np.zeros(volumes.shape)
+    
+    for k,reliability in enumerate(reliabilities):
+        volumeCapacity[k] = volumes[k,:]
+        volumeMissing[k] = volumes[k,:]-volumes[0,:]
+           
+    volumeActivation = volumeCapacity
+    
+    #FORMULAS#
+    penaltyMonitoring = volumeMissing*factor*bidCapacity*durationMonth
+    penaltyActivation = volumeMissing*tariff*durationActivation
 
-    #############################
-    #Remuneration
-    capacityRemuneration = CAPACITY_DURATION*CAPACITY_REMUNERATION*volumes
-    activationRemuneration = ACTIVATION_DURATION*ACTIVATION_REMUNERATION*volumes
-    testPenalty = CAPACITY_DURATION*CAPACITY_REMUNERATION*RATIO_MISSING*(volumes-volumes[0,:])
-    activationPenalty = ACTIVATION_DURATION*ACTIVATION_PENALTY*(volumes-volumes[0,:])
-
-    #Revenues Components
-    capacityRevenues = capacityRemuneration
-    activationRevenues = ACTIVATIONS*activationRemuneration
-    activationCosts = np.matmul(np.diag(1-reliability),ACTIVATIONS*activationPenalty)
-    testCosts = np.matmul(np.diag(1-reliability),TESTS*testPenalty)
+    revenuesCapacity =  volumeCapacity*bidCapacity*durationCapacity
+    revenuesEnergy =    activations*volumeActivation*bidEnergy*durationActivation
+    costsMonitoring =   np.matmul(np.diag(1-reliabilities),tests*penaltyMonitoring)
+    costsActivation =   np.matmul(np.diag(1-reliabilities),activations*penaltyActivation)
     
-    #Net Revenues
-    revenues = capacityRevenues + activationRevenues
-    costs = activationCosts  + testCosts
-    netRevenues = revenues - costs
+    revenuesTotal = revenuesCapacity + revenuesEnergy
+    costsTotal = costsMonitoring + costsActivation
+    revenuesNet = revenuesTotal - costsTotal
     
         
     #%% ILLUSTRATE
-    print("Illustrate Financials")
+    col = ["C0",'C1','C2','C3','C4','C5','C6']
 
     #initialize
     for k,source in enumerate(["solar","wind","agg","demand"]):
-        axes[int(k/2),k%2].plot(reliability*100, netRevenues[:,k]/10**3,linewidth=2.5,label = str(legend))
-        axes[int(k/2),k%2].plot(reliability*100, capacityRevenues[:,k]/10**3,label = "capacity revenues")
-        axes[int(k/2),k%2].plot(reliability*100, activationRevenues[:,k]/10**3,label = "activation revenues")
-        axes[int(k/2),k%2].plot(reliability*100, activationCosts[:,k]/10**3, linestyle = "-",linewidth=1,label ="activation cost")
-        axes[int(k/2),k%2].plot(reliability*100, testCosts[:,k]/10**3, linestyle = "-",linewidth=1,label ="testcost")        
+        axes[int(k/2),k%2].plot(reliabilities*100, revenuesNet[:,k]/10**3,label = "Sensitivity "+str(legend)+"%",color =col[n],linewidth=2,)
+        #axes[int(k/2),k%2].plot(reliabilities*100, revenuesTotal[:,k]/10**3,linestyle ="--",linewidth=0.5)
+        #axes[int(k/2),k%2].plot(reliabilities*100, costsTotal[:,k]/10**3,linestyle = "--",linewidth=0.5)
 
+        ##RECOMMENDATION ------------------
+        x = reliabilities[np.argmax(revenuesNet[:,k])]*100
+        y = np.amax(revenuesNet[:,k])/10**3
+        axes[int(k/2),k%2].plot([x], [y], 'o',color =col[n])
+        
         axes[int(k/2),k%2].set_xlabel("Reliability [%]")
         axes[int(k/2),k%2].set_ylabel("Revenues [k€/Month]")
         axes[int(k/2),k%2].legend()
         axes[int(k/2),k%2].set_ylim(0)
+        axes[int(k/2),k%2].set_xlim(60,100)
         axes[int(k/2),k%2].set_title(titles[k])
-        
-    
-        ##RECOMMENDATION ------------------
-        x = reliability[np.argmax(netRevenues[:,k])]*100
-        y = np.amax(netRevenues[:,k])/10**3
-        
-        col = ["C0",'C1','C2','C3','C4','C5','C6','C7']
-        axes[int(k/2),k%2].plot([x], [y], 'o',color =col[n])
