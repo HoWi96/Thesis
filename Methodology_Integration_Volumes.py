@@ -89,58 +89,141 @@ def bidVolume(df, TIME_TOTAL,TIME_HORIZON, TIME_GRANULARITY, VOLUME_GRANULARITY,
     #Adjust for volume minimum
     bid2[bid2<VOLUME_MIN] = 0
     
-    #Illustrate bidding
     labelString =  ( "--------------------------\n"
-                    + str(TIME_HORIZON) + "h-Ahead Forecast,\n"
-                    + str(TIME_GRANULARITY) + "h Resolution,\n"
-                    + str(VOLUME_GRANULARITY) + "MW Resolution,\n"
-                    + str(VOLUME_MIN) + "MW Minimum,\n"
-                    + str(RELIABILITY*100) + "% Reliable")
-    
-    plt.plot(np.arange(0,TIME_TOTAL,0.25),
-             bid2, 
-             label = labelString,
-             linestyle = "-", 
-             linewidth=1)
-    
+                + str(TIME_HORIZON) + "h-Ahead Forecast,\n"
+                + str(TIME_GRANULARITY) + "h Resolution,\n"
+                + str(VOLUME_GRANULARITY) + "MW Resolution,\n"
+                + str(VOLUME_MIN) + "MW Minimum,\n"
+                + str(RELIABILITY*100) + "% Reliable")
+
     #Return bidding
-    return bid2
+    return bid2,labelString
+
+def financialComputation(df,TIME_TOTAL,accuracy=0.1,figure = "optimum"):
+    #CONSTANTS#
+    bidCapacity = 6 #€/MW/h
+    bidEnergy = 120 #€/MWh
+    tests = 12/52 #tests/week
+    activations = 4/52 #activations/week
+    durationCapacity = 168 #hours/week
+    durationMonth = 720 #hours/month
+    durationActivation = 1 #hours
+    tariff = 120 #€/MWh
+    factor = 2
+    
+    #VOLUMES&RELIABILITY#
+    reliabilities = np.arange(0,1+0.01,accuracy)
+    volumeCapacity = np.zeros(reliabilities.shape)
+    volumeMissing = np.zeros(reliabilities.shape)
+    
+    for k,reliability in enumerate(reliabilities):
+        volumes,labelString = bidVolume(df, TIME_TOTAL, str(24), 12.00, 5, 10, reliability)
+        volumeCapacity[k] = np.mean(volumes)
+        
+    volumeMissing = volumeCapacity - volumeCapacity[reliabilities.shape[0]-1]
+    #plt.figure(); plt.plot(volumeCapacity); plt.plot(volumeMissing)    
+    volumeActivation = volumeCapacity
+    
+    #FORMULAS#
+    penaltyMonitoring = volumeMissing*factor*bidCapacity*durationMonth
+    penaltyActivation = volumeMissing*tariff*durationActivation
+
+    revenuesCapacity =  volumeCapacity*bidCapacity*durationCapacity
+    revenuesEnergy =    activations*volumeActivation*bidEnergy*durationActivation
+    costsMonitoring =   np.matmul(np.diag(1-reliabilities),tests*penaltyMonitoring)
+    costsActivation =   np.matmul(np.diag(1-reliabilities),activations*penaltyActivation)
+    
+    revenuesTotal = revenuesCapacity + revenuesEnergy
+    costsTotal = costsMonitoring + costsActivation
+    revenuesNet = revenuesTotal - costsTotal
+    
+    #Illustrate
+    plt.figure() 
+    
+    if figure == "optimum":
+        
+        plt.plot(reliabilities*100,revenuesNet/10**3, label = "Expected Net Revenues",linewidth = 2)
+        plt.plot(reliabilities*100,revenuesTotal/10**3,label= "Expected Total Revenues",linestyle = "--")
+        plt.plot(reliabilities*100,costsTotal/10**3, label = "Expected Total Costs",linestyle = "--")
+        #The optimum
+        x = reliabilities[np.argmax(revenuesNet)]*100
+        y = np.amax(revenuesNet)/10**3
+        plt.plot([x], [y], 'o',color = "C0", label = "Optimum of "+str(round(y,1))+"k€/week\nReliability "+str(round(x,1))+"%")
+        plt.title(r"$\bf Financial \: Optimum$"+"\nSimulation Time 168h, Downward Reserves 100MWp Wind")
+        
+    if figure == "revenues":
+        
+        plt.plot(reliabilities*100,revenuesTotal/10**3,label= "Expected Total Revenues",linewidth = 2)
+        plt.plot(reliabilities*100,revenuesCapacity/10**3,label= "Expected Capacity Revenues",linestyle = "--")
+        plt.plot(reliabilities*100,revenuesEnergy/10**3,label= "Expected Energy Revenues",linestyle = "--")
+        plt.title(r"$\bf Revenues \: Components$"+"\nSimulation Time 168h, Downward Reserves 100MWp Wind")
+        
+    if figure == "costs":
+        
+        plt.plot(reliabilities*100,costsTotal/10**3, label = "Expected Total Costs",linewidth = 2)
+        plt.plot(reliabilities*100,costsMonitoring/10**3,label= "Expected Monitoring Costs",linestyle = "--")
+        plt.plot(reliabilities*100,costsActivation/10**3,label= "Expected Activation Costs",linestyle = "--")
+        plt.title(r"$\bf Cost \: Components$"+"\nSimulation Time 168h, Downward Reserves 100MWp Wind")
+        
+    plt.xlim(0,100)
+    plt.ylim(0)
+    plt.legend() 
+    plt.xlabel("Reliability [%]")
+    plt.ylabel("Revenues [k€/Week]")  
+    
+    return revenuesNet,revenuesTotal,costsTotal
+    
 
 #%%  TESTS
     
 if __name__ == "__main__":
     
-    print("START Methodology Intergation Volumes")
-
+    print("START Methodology")
+    
+    #close all plots
+    plt.close("all") 
+    
     #PREPROCESS
     solarRaw,windRaw,demandRaw,allRaw2016 = pre.importData()
     solar,wind,agg,demand = pre.preprocessData(solarRaw,windRaw,demandRaw,allRaw2016)
     df = wind
     
-    #ILLUSTRATE
-    plt.close("all")    
+    print("START Volumes")
 
-    #effective volumes
+    #select the simulation time
     TIME_TOTAL = 168
-    realTime = df["0"][:TIME_TOTAL*4]
-    plt.plot(np.arange(0,TIME_TOTAL,0.25), realTime, label = "Realtime Generation",linestyle = ":",linewidth=1.5)
     
     #forecasted volumes
-    #forecast = df["24"][:TIME_TOTAL*4]
-    #plt.plot(np.arange(0,TIME_TOTAL,0.25), forecast, label = "--------------------------\n"+str(TIME_HORIZON)+"h-Ahead Forecast",linestyle = "-",linewidth=1)
+    forecast = df["24"][:TIME_TOTAL*4]
+    plt.plot(np.arange(0,TIME_TOTAL,0.25),forecast, label = "24h-Ahead Forecast",linestyle = "-",linewidth=1)
+    
+    #effective volumes
+    #realTime = df["0"][:TIME_TOTAL*4]
+    #plt.plot(np.arange(0,TIME_TOTAL,0.25), realTime, label = "Realtime Generation",linestyle = "-",linewidth=1)
+    #plt.title(r"$\bf Realized \: Generation $"+"\nSimulation Time 168h, Downward Reserves 100MWp Wind")
     
     #bid volumes
-    #TIME_TOTAL = 168
-    #volume = bidVolume(df, TIME_TOTAL, str(24), 0.25, 0.01, 0.01, 0.95)
-    #volume = bidVolume(df, TIME_TOTAL, str(24), 12.00, 0.01, 0.01, 0.95)
-    #volume = bidVolume(df, TIME_TOTAL, str(24), 12.00, 5, 0.01, 0.95)
-    volume = bidVolume(df, TIME_TOTAL, str(24), 12.00, 5, 10, 0.95)
+    #volumes,labelString = bidVolume(df, TIME_TOTAL, str(24), 0.25, 0.01, 0.01, 0.95)
+    #plt.title(r"$\bf Forecast \: Horizon$"+"\nSimulation Time 168h, Downward Reserves 100MWp Wind")
+    #volumes,labelString = bidVolume(df, TIME_TOTAL, str(24), 12.00, 0.01, 0.01, 0.95)
+    #plt.title(r"$\bf Time \: Resolution$"+"\nSimulation Time 168h, Downward Reserves 100MWp Wind")
+    #volumes,labelString = bidVolume(df, TIME_TOTAL, str(24), 12.00, 5, 0.01, 0.95)
+    #plt.title(r"$\bf Volume \: Resolution$"+"\nSimulation Time 168h, Downward Reserves 100MWp Wind")
+    volumes,labelString = bidVolume(df, TIME_TOTAL, str(24), 12.00, 5, 10, 0.95)
+    plt.title(r"$\bf Volume \: Minimum$"+"\nSimulation Time 168h, Downward Reserves 100MWp Wind")
     
+    #Illustrate bidding
+    #plt.plot(np.arange(0,TIME_TOTAL,0.25),volumes,label = labelString,linestyle = "-", linewidth=1)
     plt.legend()
     plt.xlabel("Time [h]")
     plt.ylabel("Volume [MW]")
     plt.ylim((0,100))
-    plt.title("Downward Reserves 100MWp Wind, "+"Time Total "+str(TIME_TOTAL)+"h")
     
+    
+    print("START Financials")
+    
+    #compute the financial consequences
+    financialComputation(df,TIME_TOTAL,accuracy=0.1,figure = "optimum")
+  
+    print("STOP Methodology")
     print("\a")
-    print("STOP Methodology Intergation Volumes")

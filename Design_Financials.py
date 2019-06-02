@@ -44,7 +44,7 @@ volumes = np.array([[  5.79444444,  10.78888889,  10.02222222,  18.79444444, 1.0
 
 fig,axes = plt.subplots(2,2)
 
-TESTS_ARRAY = [0,0.5,1,1.5,2,3]
+TESTS_ARRAY = [0,1,2,3]
 plt.suptitle("Net Revenues - Amount Availibility Tests\nReference = 1")
 #
 #ALLOWED_FAILS_ARRAY = [0,1,2,3,5,10]
@@ -103,12 +103,15 @@ for n,TESTS in enumerate(TESTS_ARRAY):
     #initialize
     for k,source in enumerate(["solar","wind","agg","demand"]):
         axes[int(k/2),k%2].plot(reliability*100, netRevenues[:,k]/10**3,linewidth=2.5,label = str(legend))
-        #axes[int(k/2),k%2].plot(reliability*100, revenues[:,k]/10**3, linestyle = "-",linewidth=1)
-        #axes[int(k/2),k%2].plot(reliability*100, costs[:,k]/10**3, linestyle = "-",linewidth=1)        
+        axes[int(k/2),k%2].plot(reliability*100, capacityRevenues[:,k]/10**3,label = "capacity revenues")
+        axes[int(k/2),k%2].plot(reliability*100, activationRevenues[:,k]/10**3,label = "activation revenues")
+        axes[int(k/2),k%2].plot(reliability*100, activationCosts[:,k]/10**3, linestyle = "-",linewidth=1,label ="activation cost")
+        axes[int(k/2),k%2].plot(reliability*100, testCosts[:,k]/10**3, linestyle = "-",linewidth=1,label ="testcost")        
 
         axes[int(k/2),k%2].set_xlabel("Reliability [%]")
         axes[int(k/2),k%2].set_ylabel("Revenues [k€/Month]")
         axes[int(k/2),k%2].legend()
+        axes[int(k/2),k%2].set_ylim(0)
         axes[int(k/2),k%2].set_title(titles[k])
         
     
