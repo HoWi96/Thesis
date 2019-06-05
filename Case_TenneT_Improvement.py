@@ -34,16 +34,16 @@ if TENNET == 1:
     TIME_HORIZON = str(8760)#h
     VOLUME_GRANULARITY = 5#MW
     VOLUME_MIN = 20#MW
-    suptitle = (r"$\bf Case \: TenneT \: 2018$"+"\nSimulation Time 720h\n"+
-            "8760h-Ahead Forecast, 720$\Delta$h Resolution, 5$\Delta$MW Resolution, 20MW Minimum ")
+    suptitle = (r"$\bf Case \: TenneT \: 2018$"+"\nSimulation of 720h\n"+
+            "8760h-Ahead Forecast, 720h Resolution, 5MW Resolution, 20MW Minimum ")
 else:
     print("Elia 2020 selected")
     TIME_GRANULARITY = 4#h
     TIME_HORIZON = str(24)#h
     VOLUME_GRANULARITY = 1#MW
     VOLUME_MIN = 1#MW
-    suptitle = (r"$\bf Case \: Elia \: 2020$"+"\nSimulation Time 720h\n"+
-            "24h-Ahead Forecast, 4$\Delta$h Resolution, 1$\Delta$MW Resolution, 1MW Minimum ")
+    suptitle = (r"$\bf Case \: Elia \: 2020$"+"\nSimulation of 720h\n"+
+            "24h-Ahead Forecast, 4h Resolution, 1MW Resolution, 1MW Minimum ")
 
 #Product Characteristics
 TIME_TOTAL = int(solar.shape[0]/4)#h
@@ -113,7 +113,7 @@ for k,source in enumerate(["solar","wind","agg","demand"]):
     #mean bid volume
     MBV = bidVolume[:,k]
     
-    #mean effective volume
+    #mean Realized volume
     MEV = np.ones(reliability.shape)*df0[source].mean()
     
     #Reliable bid volume
@@ -124,7 +124,7 @@ for k,source in enumerate(["solar","wind","agg","demand"]):
     axes[int(k/2),k%2].fill_between(reliability*100,MBV,RBV,color = "C0",alpha = 0.1)
     axes[int(k/2),k%2].fill_between(reliability*100,0,RBV,color = "C1",alpha = 0.1)
     
-    axes[int(k/2),k%2].legend(("Mean Bid Volume", "Mean Effective Volume","Mean Unreliable Volume","Mean Reliable Volume"))
+    axes[int(k/2),k%2].legend(("Mean Bid Volume", "Mean Realized Volume","Mean Unreliable Volume","Mean Reliable Volume"))
     axes[int(k/2),k%2].set_xlabel('Reliability [%]')
     axes[int(k/2),k%2].set_ylabel('Bid Volume [MW]')
     axes[int(k/2),k%2].set_ylim(0,44)
@@ -135,7 +135,7 @@ for k,source in enumerate(["solar","wind","agg","demand"]):
         reference = bidVolume[:,4]+bidVolume[:,5]
         
         axes[int(k/2),k%2].fill_between(reliability*100,MBV,reference,color = "C2",alpha = 0.2)
-        axes[int(k/2),k%2].legend(("Mean Bid Volume", "Mean Effective Volume","Mean Unreliable Volume","Mean Reliable Volume","Mean Added Volume"))
+        axes[int(k/2),k%2].legend(("Mean Bid Volume", "Mean Realized Volume","Mean Unreliable Volume","Mean Reliable Volume","Mean Added Volume"))
         axes[int(k/2),k%2].plot(reliability*100,reference,linewidth=1,linestyle ='--',color = "C2")
         
     axes[int(k/2),k%2].plot(reliability*100,RBV,linewidth=1,linestyle = "--",color = "C1")
@@ -166,7 +166,7 @@ if TENNET == 1:
     ACTIVATIONS = 2/12 #activations/M
     suptitle = (r"$\bf Case \: TenneT \: 2018$"+"\nSimulation Time 720h\n"+
             "6€/MW/h Capacity Remuneration, 150€/MWh Activation Remuneration\n"+ 
-            "0.17/M Activations, 1h Activation Duration, 0% Capacity Penalty, 720€ Activation Penalty")
+            "2/12 Activations/Year, 1h Activation Duration, 100% Factor, 720€ Activation Penalty")
     ########################
     
     #Capacity Remuneration
@@ -199,7 +199,7 @@ else:
     ACTIVATION_PENALTY = 150 #EUR/MWh/activation
     suptitle = (r"$\bf Case \: Elia \: 2020$"+"\nSimulation Time 720h\n"+
             "6€/MW/h Capacity Remuneration, 150€/MWh Activation Remuneration\n"+ 
-            "1/M Activations, 4h Activation Duration, 150% Capacity Penalty, 150€ Activation Penalty")
+            "1/M Tests, 4h Activation Duration, 130% Factor, 150€ Activation Penalty")
 
     ########################
     
@@ -224,7 +224,8 @@ revenues = capacityRevenues + activationRevenues - activationCosts  - capacityCo
     
 #%% ILLUSTRATE
 print("Illustrate Financials")
-
+print("\a")
+print("Revision of code and illustrations needed")
 #initialize
 fig,axes = plt.subplots(2,2)
 plt.suptitle(suptitle)

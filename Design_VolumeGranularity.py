@@ -36,10 +36,10 @@ for j,gran in enumerate(granularities):
 #%% ILLUSTRATE
 
 #initialize
-xlabels = ['Volume Resolution [$\Delta$MW]','Volume Minimum [MW]']
+xlabels = ['Volume Resolution [MW]','Volume Minimum [MW]']
 titles = ["(a) Solar PV 100MWp Down","(b) Wind 100MWp Down","(c) Aggregator 100MWp Down","(d) Demand 100MWp Up (SL = 50MW)"]
-suptitles = [(r"$\bf Impact \: Volume \: Resolution$"+"\nSimulation Time 720h\n"+ "0h-Ahead Forecast, "+ "0.25$\Delta$h Resolution, "+ "-% Reliability, "+ "0.01MW Minimum "),
-             (r"$\bf Impact \: Volume \: Minimum$"   +"\nSimulation Time 720h\n"+ "0h-Ahead Forecast, "+ "0.25$\Delta$h Resolution, "+ "-% Reliability, "+ "0.01$\Delta$MW Resolution")]
+suptitles = [(r"$\bf Impact \: Volume \: Resolution$"+"\nSimulation of 720h\n"+ "0h-Ahead Forecast, "+ "0.25h Resolution, "+ "-% Reliability, "+ "0.01MW Minimum "),
+             (r"$\bf Impact \: Volume \: Minimum$"   +"\nSimulation of 720h\n"+ "0h-Ahead Forecast, "+ "0.25h Resolution, "+ "-% Reliability, "+ "0.01MW Resolution")]
     
 #compute
 plt.close("all")
@@ -56,13 +56,13 @@ for i,volume in enumerate([volumeRes,volumeMin]):
         #mean bid volume
         MBV = volume[:,k]
         
-        #mean effective volume
+        #mean Realized volume
         MEV = np.ones(len(granularities))*df[source].mean()
         
         axes[int(k/2),k%2].plot(granularities,MBV,linewidth=1.5)
         axes[int(k/2),k%2].plot(granularities,MEV,linewidth=1.5)
         axes[int(k/2),k%2].fill_between(granularities,MBV,MEV,color = "orange",alpha = 0.1)
-        axes[int(k/2),k%2].legend(("Mean Bid Volume", "Mean Effective Volume","Mean Lost Volume"))
+        axes[int(k/2),k%2].legend(("Mean Bid Volume", "Mean Realized Volume","Mean Lost Volume"))
         axes[int(k/2),k%2].set_xlabel(xlabels[i])
         axes[int(k/2),k%2].set_ylabel('Bid Volume [MW]')
         axes[int(k/2),k%2].set_ylim(0,31)
@@ -74,4 +74,4 @@ for i,volume in enumerate([volumeRes,volumeMin]):
             
             axes[int(k/2),k%2].plot(granularities,reference,linewidth=1.5,linestyle ='--')
             axes[int(k/2),k%2].fill_between(granularities,MBV,reference,color = "green",alpha = 0.2)
-            axes[int(k/2),k%2].legend(("Mean Bid Volume", "Mean Effective Volume","Mean Seperated Volume","Mean Lost Volume","Mean Added Volume"))
+            axes[int(k/2),k%2].legend(("Mean Bid Volume", "Mean Realized Volume","Mean Seperated Volume","Mean Lost Volume","Mean Added Volume"))

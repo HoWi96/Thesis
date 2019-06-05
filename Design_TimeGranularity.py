@@ -36,7 +36,7 @@ for i,gran in enumerate(granularities):
 
 #initialize
 titles = ["(a) Solar PV 100MWp Down","(b) Wind 100MWp Down","(c) Aggregator 100MWp Down","(d) Demand 100MWp Up (SL = 50MW)"]
-suptitle = (r"$\bf Impact \: Time \: Resolution$"+"\nSimulation Time 720h\n"+ "0h-Ahead Forecast, "+ "95% Reliability, "+ "0.01$\Delta$MW Resolution, "+ "0.01MW Minimum ")
+suptitle = (r"$\bf Impact \: Time \: Resolution$"+"\nSimulation of 720h\n"+ "0h-Ahead Forecast, "+ "95% Reliability, "+ "0.01MW Resolution, "+ "0.01MW Minimum ")
 
 #compute
 plt.close("all")
@@ -55,8 +55,8 @@ for k,source in enumerate(["solar","wind","agg","demand"]):
     axes[int(k/2),k%2].plot(granularities,MBV,linewidth=1.5)
     axes[int(k/2),k%2].plot(granularities,MEV,linewidth=1.5)
     axes[int(k/2),k%2].fill_between(granularities,MBV,MEV,color = "orange",alpha = 0.1)
-    axes[int(k/2),k%2].legend(("Mean Bid Volume", "Mean Effective Volume","Mean Lost Volume"))
-    axes[int(k/2),k%2].set_xlabel('Time Resolution [$\Delta$h]')
+    axes[int(k/2),k%2].legend(("Mean Bid Volume", "Mean Realized Volume","Mean Lost Volume"))
+    axes[int(k/2),k%2].set_xlabel('Time Resolution [h]')
     axes[int(k/2),k%2].set_ylabel('Bid Volume [MW]')
     axes[int(k/2),k%2].set_ylim(0,31)
     axes[int(k/2),k%2].set_title(titles[k]) 
@@ -67,4 +67,4 @@ for k,source in enumerate(["solar","wind","agg","demand"]):
         
         axes[int(k/2),k%2].plot(granularities,reference,linewidth=1.5,linestyle ='--')
         axes[int(k/2),k%2].fill_between(granularities,MBV,reference,color = "green",alpha = 0.2)
-        axes[int(k/2),k%2].legend(("Mean Bid Volume", "Mean Effective Volume","Mean Seperated Volume","Mean Lost Volume","Mean Added Volume"))
+        axes[int(k/2),k%2].legend(("Mean Bid Volume", "Mean Realized Volume","Mean Seperated Volume","Mean Lost Volume","Mean Added Volume"))
