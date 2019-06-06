@@ -39,6 +39,7 @@ for j,source in enumerate([solar,wind,agg,demand,solar*0.25,wind*0.75]):
             indexbin[x] = np.where(np.column_stack((df>(x-step*1.5),df<(x+step*1.5))).all(axis=1))[0]
             errorbin[x] = source["0"][indexbin[x]]-df[indexbin[x]]
         
+        #Compute volume with required reliability
         for k,vol in enumerate(source[horizon]):
             volRefError = errorbin[vol-vol%step]
             new[k] =  vol + volRefError.quantile((100-RELIABILITY)/100)
