@@ -20,7 +20,8 @@ df = pd.DataFrame(data={"solar":solar["0"],"wind":wind["0"],"agg":agg["0"],"dema
 
 #initialize
 RELIABILITY = 95
-granularities = np.arange(0.25,50,2)
+#granularities = np.arange(0.25,50,2)
+granularities = np.array([0.25,0.5,1,4,8,24,48])
 groups = np.array(int(df.shape[0]/4)/granularities,dtype="int")
 volume = np.zeros((granularities.shape[0],df.shape[1]))
 
@@ -68,3 +69,6 @@ for k,source in enumerate(["solar","wind","agg","demand"]):
         axes[int(k/2),k%2].plot(granularities,reference,linewidth=1.5,linestyle ='--')
         axes[int(k/2),k%2].fill_between(granularities,MBV,reference,color = "green",alpha = 0.2)
         axes[int(k/2),k%2].legend(("Mean Bid Volume", "Mean Realized Volume","Mean Seperated Volume","Mean Lost Volume","Mean Added Volume"))
+
+
+    np.round(volume/np.matmul(np.ones((len(granularities),6)),np.diag(df.mean())),2)

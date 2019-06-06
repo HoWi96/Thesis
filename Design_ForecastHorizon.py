@@ -81,4 +81,5 @@ for k,source in enumerate(["solar","wind","agg","demand"]):
         axes[int(k/2),k%2].plot(horizons,reference,linewidth=1.5,linestyle ='--')
         axes[int(k/2),k%2].fill_between(horizons,MBV,reference,color = "green",alpha = 0.2)
         axes[int(k/2),k%2].legend(("Mean Bid Volume", "Mean Realized Volume","Mean Seperated Volume","Mean Lost Volume","Mean Added Volume"))
-        
+     
+print(np.round(volume/np.matmul(np.ones((len(horizons),6)),np.diag(df0.mean())),3))

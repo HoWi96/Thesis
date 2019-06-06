@@ -12,7 +12,7 @@ import pandas as pd
 #PREPROCESS
 solarRaw,windRaw,demandRaw,allRaw2016 = pre.importData()
 solar,wind,agg,demand = pre.preprocessData(solarRaw,windRaw,demandRaw,allRaw2016)
-df = pd.DataFrame(data={"solar":solar["0"],"wind":wind["0"],"agg":agg["0"],"demand":demand["0"],
+df0 = pd.DataFrame(data={"solar":solar["0"],"wind":wind["0"],"agg":agg["0"],"demand":demand["0"],
                         "solar25":solar["0"]*0.25,"wind75":wind["0"]*0.75})
 
 #%% PROCESS
@@ -23,16 +23,17 @@ titles = ["(a) Solar PV 100MWp Down","(b) Wind 100MWp Down","(c) Aggregator 100M
 horizon = "24"
 accuracy = 0.01
 totalTime = 720
-reliabilities = 1-np.arange(0,1+0.01,accuracy)
-volume = np.zeros((len(reliabilities),df.shape[1]))
-volumeMissing = np.zeros((len(reliabilities),df.shape[1]))
-volumeLost = np.zeros((len(reliabilities),df.shape[1]))
+#reliabilities = np.array([1,0.95,0.9,0.8,0.7,0.6])
+reliabilities = 1-np.arange(0,1.01,0.01)
+volume = np.zeros((len(reliabilities),df0.shape[1]))
+volumeMissing = np.zeros((len(reliabilities),df0.shape[1]))
+volumeLost = np.zeros((len(reliabilities),df0.shape[1]))
 
 print("START bid creation")
 #compute
 for j,source in enumerate([solar,wind,agg,demand,solar*0.25,wind*0.75]):
     print("Bid Creation Source "+str(j))
-    realizedVolumes = np.ones(df.shape[0])*np.mean(source["0"])
+    realizedVolumes = np.ones(df0.shape[0])*np.mean(source["0"])
     df = source[horizon]
     
     for i,reliability in enumerate(reliabilities):
@@ -88,6 +89,7 @@ for k,source in enumerate(["solar","wind","agg","demand"]):
      axes[int(k/2),k%2].set_xlim(0,100)
      axes[int(k/2),k%2].set_title(titles[k])
      
+print(np.round(volume/np.matmul(np.ones((len(reliabilities),6)),np.diag(df0.mean())),3))
 #%%     
 print("Start Financial Impact")
 
@@ -104,7 +106,6 @@ plt.suptitle(r"$\bf Sensitivity \: Analysis \: of \: Test \: Costs \: on \: Expe
 
 #compute
 for n,sensitivity in sensitivities:
-    print("sensitivity "+str(sensitivity))
     
     if parameter == "penalty":
         legend = sensitivity*100
@@ -157,3 +158,5 @@ for n,sensitivity in sensitivities:
         axes[int(k/2),k%2].set_ylim(0)
         axes[int(k/2),k%2].set_xlim(60,100)
         axes[int(k/2),k%2].set_title(titles[k])
+        
+    print(str(sensitivity) + " "+ str(reliabilities[np.argmax(revenuesNet,axis = 0)]))

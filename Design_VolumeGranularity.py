@@ -20,7 +20,8 @@ dfArray = np.array(df)
 #%% PROCESS
 
 #initialize
-granularities = np.arange(0.01,10.01,0.01)
+granularities = np.array([0.25,0.5,1,2,4,8])
+#granularities = np.arange(0.01,10.01,0.01)
 volumeRes = np.zeros((granularities.shape[0],df.shape[1]))
 volumeMin = np.zeros((granularities.shape[0],df.shape[1]))
 
@@ -75,3 +76,6 @@ for i,volume in enumerate([volumeRes,volumeMin]):
             axes[int(k/2),k%2].plot(granularities,reference,linewidth=1.5,linestyle ='--')
             axes[int(k/2),k%2].fill_between(granularities,MBV,reference,color = "green",alpha = 0.2)
             axes[int(k/2),k%2].legend(("Mean Bid Volume", "Mean Realized Volume","Mean Seperated Volume","Mean Lost Volume","Mean Added Volume"))
+            
+print(np.round(volumeRes/np.matmul(np.ones((len(granularities),6)),np.diag(df.mean())),3))
+print(np.round(volumeMin/np.matmul(np.ones((len(granularities),6)),np.diag(df.mean())),3))
