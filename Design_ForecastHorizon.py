@@ -49,8 +49,8 @@ for j,source in enumerate([solar,wind,agg,demand,solar*0.25,wind*0.75]):
 
 #initialize
 titles = ["(a) Solar PV 100MWp Down","(b) Wind 100MWp Down","(c) Aggregator 100MWp Down","(d) Demand 100MWp Up (SL = 50MW)"]
-suptitle = (r"$\bf Impact \: Forecast \: Horzion$"+"\nSimulation of 720h\n"+ "0.25h Resolution, "+ "95% Reliability, "+ "0.01MW Resolution, "+ "0.01MW Minimum ")
-
+suptitle = (r"$\bf Impact \: Contracting \: Period$"+"\nSimulation of 720h\n"+ "0.25h Resolution, "+ "95% Reliability, "+ "0.01MW Resolution, "+ "0.01MW Minimum ")
+horizons = ["0","4","24","168","720"]
 #compute
 plt.close("all")
 fig,axes = plt.subplots(2,2)
@@ -69,7 +69,7 @@ for k,source in enumerate(["solar","wind","agg","demand"]):
     axes[int(k/2),k%2].plot(horizons,MEV,linewidth=1.5)
     axes[int(k/2),k%2].fill_between(horizons,MBV,MEV,color = "orange",alpha = 0.1)
     axes[int(k/2),k%2].legend(("Mean Bid Volume", "Mean Realized Volume","Mean Lost Volume"))
-    axes[int(k/2),k%2].set_xlabel('Forecast Horizon [h]')
+    axes[int(k/2),k%2].set_xlabel('Contracting Period [h]')
     axes[int(k/2),k%2].set_ylabel('Bid Volume [MW]')
     axes[int(k/2),k%2].set_ylim(0,31)
     axes[int(k/2),k%2].set_title(titles[k]) 
