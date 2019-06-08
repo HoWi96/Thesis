@@ -1,10 +1,17 @@
 # Thesis
 Content:
-* Assessing uncertain sources of flexibility
-* Integrating uncertain sources of flexibility
-* Facilitating uncertain sources of flexibility
+* Visualization Intermittent Sources Of Flexibility
+* Visualization Data Dependencies
+* Visualization Dependencies System Imbalance & Intermittent Sources
+* Methodology
+* Impact Contracting Period [h]
+* Impact Time Resolution [h]
+* Impact Volume Resolution [MW]
+* Impact Penalty [€/Missing MW]
+* Case Study mFFR TenneT 2018, mFFR Elia 2020
 
 Made possible by:
 - Holger Willems
-- Actility 
-- KU Leuven
+- Actility - Cedric Weyns 
+- KU Leuven - Kris Poncelet
+- KU Leuven - Erik Delarue
