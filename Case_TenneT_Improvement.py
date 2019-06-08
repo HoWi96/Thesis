@@ -27,6 +27,8 @@ print("Process Volumes")
 
 #cases
 TENNET = 0
+step = 0.02
+
 if TENNET == 1:
     print("TenneT 2018 selected")
     #Constraints
@@ -35,7 +37,7 @@ if TENNET == 1:
     VOLUME_GRANULARITY = 5#MW
     VOLUME_MIN = 20#MW
     suptitle = (r"$\bf Case \: TenneT \: 2018$"+"\nSimulation of 720h\n"+
-            "8760h-Ahead Forecast, 720h Resolution, 5MW Resolution, 20MW Minimum ")
+            "GCT + 320h Start CP, 720h Contracting Period, 720h Resolution, 5MW Resolution, 20MW Minimum")
 else:
     print("Elia 2020 selected")
     TIME_GRANULARITY = 4#h
@@ -43,22 +45,24 @@ else:
     VOLUME_GRANULARITY = 1#MW
     VOLUME_MIN = 1#MW
     suptitle = (r"$\bf Case \: Elia \: 2020$"+"\nSimulation of 720h\n"+
-            "24h-Ahead Forecast, 4h Resolution, 1MW Resolution, 1MW Minimum ")
+            "GCT + 14h Start CP, 24h Contracting Period, 4h Resolution, 1MW Resolution, 1MW Minimum")
 
 #Product Characteristics
 TIME_TOTAL = int(solar.shape[0]/4)#h
 TIME_GROUPS = int(TIME_TOTAL/TIME_GRANULARITY)
 
 #quantiles
-step = 0.05
-reliability = 1-np.arange(0,1+step/2,step)
+reliability = 1-np.arange(0,1.01,step)
 bidVolume = np.zeros((reliability.shape[0],df0.shape[1]))
+volumeMissing = np.zeros((reliability.shape[0],df0.shape[1]))
+volumeLost = np.zeros((reliability.shape[0],df0.shape[1]))
 
 #Compute------------------
 
 #iterate over all sources
 for idx,df in enumerate([solar,wind,agg,demand,solar*0.25,wind*0.75]):
     print("Processing Source "+str(idx))
+    realizedVolumes = df["0"]
     
     # (1) Initialize errorbins
     indexbin = {}
@@ -95,12 +99,17 @@ for idx,df in enumerate([solar,wind,agg,demand,solar*0.25,wind*0.75]):
         
         # (6) Take volume mean
         bidVolume[k,idx] = bid2.mean()
+        
+        differenceVolumes = realizedVolumes-bid2
+        volumeMissing[k,idx] = -np.sum(differenceVolumes[differenceVolumes<0])/(TIME_TOTAL*4)
+        volumeLost[k,idx] = np.sum(differenceVolumes[differenceVolumes>0])/(TIME_TOTAL*4)
     
 #%%ILLUSTRATE
 print("Illustrate Volumes")
 
 #initialize
 titles = ["(a) Solar PV 100MWp Down","(b) Wind 100MWp Down","(c) Aggregator 100MWp Down","(d) Demand 100MWp Up (SL = 50MW)"]
+col = ["C0",'C1','C2','C3','C4','C5','C6']
 
 #compute
 plt.close("all")
@@ -109,36 +118,28 @@ plt.suptitle(suptitle)
 
 #iterate over sources
 for k,source in enumerate(["solar","wind","agg","demand"]):
+    axes[int(k/2),k%2].plot(reliability*100, bidVolume[:,k],label = "Mean Offered Volume")
+    axes[int(k/2),k%2].plot(reliability*100, volumeMissing[:,k],label = "Mean Missing Volume")
+    axes[int(k/2),k%2].plot(reliability*100, volumeLost[:,k],label = "Mean Lost Volume")
     
-    #mean bid volume
-    MBV = bidVolume[:,k]
-    
-    #mean Realized volume
-    MEV = np.ones(reliability.shape)*df0[source].mean()
-    
-    #Reliable bid volume
-    RBV = np.ones(reliability.shape)*bidVolume[0,k]
-    
-    axes[int(k/2),k%2].plot(reliability*100,MBV,linewidth=1.5,color = "C0")
-    axes[int(k/2),k%2].plot(reliability*100,MEV,linewidth=1,linestyle = "--",color = "C0")
-    axes[int(k/2),k%2].fill_between(reliability*100,MBV,RBV,color = "C0",alpha = 0.1)
-    axes[int(k/2),k%2].fill_between(reliability*100,0,RBV,color = "C1",alpha = 0.1)
-    
-    axes[int(k/2),k%2].legend(("Mean Bid Volume", "Mean Realized Volume","Mean Unreliable Volume","Mean Reliable Volume"))
-    axes[int(k/2),k%2].set_xlabel('Reliability [%]')
-    axes[int(k/2),k%2].set_ylabel('Bid Volume [MW]')
-    axes[int(k/2),k%2].set_ylim(0,44)
-    axes[int(k/2),k%2].set_title(titles[k]) 
-    
-    #mean added volume
     if source == "agg":
-        reference = bidVolume[:,4]+bidVolume[:,5]
-        
-        axes[int(k/2),k%2].fill_between(reliability*100,MBV,reference,color = "C2",alpha = 0.2)
-        axes[int(k/2),k%2].legend(("Mean Bid Volume", "Mean Realized Volume","Mean Unreliable Volume","Mean Reliable Volume","Mean Added Volume"))
-        axes[int(k/2),k%2].plot(reliability*100,reference,linewidth=1,linestyle ='--',color = "C2")
-        
-    axes[int(k/2),k%2].plot(reliability*100,RBV,linewidth=1,linestyle = "--",color = "C1")
+         volumeRef = bidVolume[:,4]+bidVolume[:,5]
+         volumeMissingRef = volumeMissing[:,4]+volumeMissing[:,5]
+         volumeLostRef = volumeLost[:,4]+volumeLost[:,5]
+         
+         axes[int(k/2),k%2].plot(reliability*100,volumeRef, linestyle ='-.', label = "MOV - Sources seperated", color = col[0])
+         axes[int(k/2),k%2].plot(reliability*100,volumeMissingRef,linestyle ='-.',label = "MMV - Sources seperated",color = col[1])
+         axes[int(k/2),k%2].plot(reliability*100,volumeLostRef,linestyle ='-.', label = "MLV - Sources seperated",color = col[2])
+     
+    axes[int(k/2),k%2].legend()
+    axes[int(k/2),k%2].set_xlabel("Reliability [%]")
+    axes[int(k/2),k%2].set_ylabel("Volume [MW]")
+    axes[int(k/2),k%2].set_ylim(0)
+    axes[int(k/2),k%2].set_xlim(0,100)
+    axes[int(k/2),k%2].set_title(titles[k])
+     
+print(np.round(bidVolume/np.matmul(np.ones((len(reliability),6)),np.diag(df0.mean())),3))
+
 #%%#####################################################################
 # FINANCIALS
 ########################################################################
@@ -166,7 +167,7 @@ if TENNET == 1:
     ACTIVATIONS = 2/12 #activations/M
     suptitle = (r"$\bf Case \: TenneT \: 2018$"+"\nSimulation Time 720h\n"+
             "6€/MW/h Capacity Remuneration, 150€/MWh Activation Remuneration\n"+ 
-            "2/12 Activations/Year, 1h Activation Duration, 100% Factor, 720€ Activation Penalty")
+            "2/12 Activations/Y, 1h Activation Duration, 720€/MWh Activation Penalty")
     ########################
     
     #Capacity Remuneration
@@ -179,48 +180,46 @@ if TENNET == 1:
     activationPenalty = ACTIVATION_DURATION*ACTIVATION_PENALTY*volumes
     
     #Revenues
-    capacityRevenues=   capacityRemuneration
-    capacityCosts = np.zeros(capacityRemuneration.shape)
-    activationRevenues= ACTIVATIONS*np.matmul(np.diag(reliability),activationRemuneration)
-    activationCosts=    ACTIVATIONS*np.matmul(np.diag(1-reliability),activationPenalty)
+    revenuesCapacity =   capacityRemuneration
+    revenuesEnergy =     ACTIVATIONS*np.matmul(np.diag(reliability),activationRemuneration)
+    costsMonitoring =   np.zeros(capacityRemuneration.shape)
+    costsActivation =    ACTIVATIONS*np.matmul(np.diag(1-reliability),activationPenalty)
     
 else:
     #Bids
-    CAPACITY_REMUNERATION = 6 #EUR/MW/h
-    ACTIVATION_REMUNERATION = 150 #EUR/MWh/activation
+    bidCapacity = 6 #EUR/MW/h
+    bidEnergy = 120 #EUR/MWh/activation
     
     #Market Parameters
-    ACTIVATIONS = 12/12 #activations/M
-    ACTIVATION_DURATION = 4#h
-    CAPACITY_DURATION = 720#h
-    CAPACITY_PENALTY = 150#%
+    durationActivation = 4#h
+    durationCapacity = 720#h
+    durationMonth = 720#h
+    factor = 1.3#%
+    activations = 2/12 #activations/M
+    tests = 12/12 #activations/M
+    volumeCapacity = volumes
+    volumeActivation = volumes
     
     #External Determined
-    ACTIVATION_PENALTY = 150 #EUR/MWh/activation
+    tariff = 120 #EUR/MWh/activation
     suptitle = (r"$\bf Case \: Elia \: 2020$"+"\nSimulation Time 720h\n"+
-            "6€/MW/h Capacity Remuneration, 150€/MWh Activation Remuneration\n"+ 
-            "1/M Tests, 4h Activation Duration, 130% Factor, 150€ Activation Penalty")
+            "6€/MW/h Capacity Remuneration, 120€/MWh Activation Remuneration\n"+ 
+            "1 Test/M, 5.62k€/MW Test Penalty, 1/12 Activation/M, 4h Activation Duration, 120€/MWh Tariff")
 
     ########################
     
-    #Capacity Remuneration
-    capacityRemuneration = CAPACITY_DURATION*CAPACITY_REMUNERATION*volumes
+    #FORMULAS#
+    penaltyMonitoring = volumeMissing*factor*bidCapacity*durationMonth
+    penaltyActivation = volumeMissing*tariff*durationActivation
+
+    revenuesCapacity =  volumeCapacity*bidCapacity*durationCapacity
+    revenuesEnergy =    activations*volumeActivation*bidEnergy*durationActivation
+    costsMonitoring =   np.matmul(np.diag(1-reliability),tests*penaltyMonitoring)
+    costsActivation =   np.matmul(np.diag(1-reliability),activations*penaltyActivation)
     
-    #Revenues per activation
-    activationRemuneration = ACTIVATION_DURATION*ACTIVATION_REMUNERATION*volumes
-    
-    #Costs per activation
-    activationPenalty = ACTIVATION_DURATION*ACTIVATION_PENALTY*(volumes-volumes[0,:])
-    capacityPenalty = CAPACITY_PENALTY/100*(capacityRemuneration-capacityRemuneration[0,:])
-    
-    #revenues
-    capacityRevenues =   np.matmul(np.diag(1-(1-reliability)**3), capacityRemuneration)
-    capacityCosts =      np.matmul(np.diag(1-(1-reliability)**3), np.matmul(np.diag(1-reliability),capacityPenalty))
-    activationRevenues = np.matmul(np.diag(1-(1-reliability)**3), ACTIVATIONS*np.matmul(np.diag(reliability),activationRemuneration))
-    activationCosts =    np.matmul(np.diag(1-(1-reliability)**3), ACTIVATIONS*np.matmul(np.diag(1-reliability),activationPenalty))
-    
-#revenues
-revenues = capacityRevenues + activationRevenues - activationCosts  - capacityCosts
+revenuesTotal = revenuesCapacity + revenuesEnergy
+costsTotal = costsMonitoring + costsActivation
+revenuesNet = revenuesTotal - costsTotal
     
 #%% ILLUSTRATE
 print("Illustrate Financials")
@@ -231,29 +230,25 @@ fig,axes = plt.subplots(2,2)
 plt.suptitle(suptitle)
 
 for k,source in enumerate(["solar","wind","agg","demand"]):
-    axes[int(k/2),k%2].plot(reliability*100, revenues[:,k]/10**3,linewidth=2.5,)
-    axes[int(k/2),k%2].plot(reliability*100, capacityRevenues[:,k]/10**3, linestyle = "-",linewidth=1)
-    axes[int(k/2),k%2].plot(reliability*100, activationRevenues[:,k]/10**3, linestyle = "-",linewidth=1)
-    axes[int(k/2),k%2].plot(reliability*100, (capacityCosts[:,k]+activationCosts[:,k])/10**3, linestyle = "-",linewidth=1)
+    axes[int(k/2),k%2].plot(reliability*100, revenuesNet[:,k]/10**3,linewidth=1.5,label = "Expected Net Revenues")
+    axes[int(k/2),k%2].plot(reliability*100, revenuesTotal[:,k]/10**3, linestyle = "-", label = "Expected Total Revenues")
+    axes[int(k/2),k%2].plot(reliability*100, costsTotal[:,k]/10**3, linestyle = "-", label = "Expected Total Costs")
     
-    
+    #mean added volume
+    if source == "agg":
+        revenuesRef = revenuesNet[:,4]+revenuesNet[:,5]
+        axes[int(k/2),k%2].plot(reliability*100,revenuesRef/10**3, linestyle ='-.',linewidth = 0.5, color ="C0",label="ENR - Seperated Sources")
+        
     axes[int(k/2),k%2].set_xlabel("Reliability [%]")
     axes[int(k/2),k%2].set_ylabel("Revenues [k€/Month]")
-    axes[int(k/2),k%2].set_ylim(0,125)
+    axes[int(k/2),k%2].legend()
+    axes[int(k/2),k%2].set_ylim(0)
+    axes[int(k/2),k%2].set_xlim(0,100)
     axes[int(k/2),k%2].set_title(titles[k])
-    axes[int(k/2),k%2].legend(("Mean Revenues", "Mean Capacity Remuneration","Mean Activation Remuneration","Mean Activation Penalty"))
     
-        #mean added volume
-    if source == "agg":
-        reference = (revenues[:,4]+revenues[:,5])
-        
-        axes[int(k/2),k%2].fill_between(reliability*100,revenues[:,2]/10**3,reference/10**3,color = "turquoise",alpha = 0.2)
-        axes[int(k/2),k%2].legend(("Mean Revenues", "Mean Capacity Remuneration","Mean Activation Remuneration","Mean Activation Penalty","Mean Added Value"))
-        axes[int(k/2),k%2].plot(reliability*100,reference/10**3,linewidth=1,linestyle ='--',color = "turquoise")
-
     ##RECOMMENDATION ------------------
-    x = reliability[np.argmax(revenues[:,k])]*100
-    y = np.amax(revenues[:,k])/10**3
+    x = reliability[np.argmax(revenuesNet[:,k])]*100
+    y = np.amax(revenuesNet[:,k])/10**3
     
     axes[int(k/2),k%2].plot([x], [y], 'o')
     axes[int(k/2),k%2].annotate(str(round(y,2))+"k€/M",
@@ -264,6 +259,8 @@ for k,source in enumerate(["solar","wind","agg","demand"]):
                                     horizontalalignment='left',
                                     verticalalignment='bottom'
                                     )
+    
+print(str(reliability[np.argmax(revenuesNet,axis = 0)]))
     
    
 print("Finished Case Study")

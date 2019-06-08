@@ -69,9 +69,9 @@ fig,axes = plt.subplots(2,2)
 suptitle = (r"$\bf Impact \: Reliability $"+"\nSimulation of 720h\n"+ "24h-Ahead Forecast, "+ "0.25h Resolution, " + "0.01MW Resolution, "+ "0.01MW Minimum ")
 plt.suptitle(suptitle)
 for k,source in enumerate(["solar","wind","agg","demand"]):
-     axes[int(k/2),k%2].plot(reliabilities*100, volume[:,k],label = "MOV (Mean Offered Volume)")
-     axes[int(k/2),k%2].plot(reliabilities*100, volumeMissing[:,k],label = "MMV (Mean Missing Volume)")
-     axes[int(k/2),k%2].plot(reliabilities*100, volumeLost[:,k],label = "MLV (Mean Lost Volume)")
+     axes[int(k/2),k%2].plot(reliabilities*100, volume[:,k],label = "Mean Offered Volume")
+     axes[int(k/2),k%2].plot(reliabilities*100, volumeMissing[:,k],label = "Mean Missing Volume")
+     axes[int(k/2),k%2].plot(reliabilities*100, volumeLost[:,k],label = "Mean Lost Volume")
 
      if source == "agg":
          volumeRef = volume[:,4]+volume[:,5]

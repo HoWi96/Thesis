@@ -44,7 +44,7 @@ suptitle = (r"$\bf Flexibility \: By \: Intermittent \: Sources$"+"\nSimulation 
 #compute
 plt.close("all")
 fig,axes = plt.subplots(2,2)
-plt.suptitle(suptitle)
+#plt.suptitle(suptitle)
 
 #Make different plots
 axes[0,0].plot(time,wind,color = "blue")
