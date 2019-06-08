@@ -8,6 +8,7 @@ Content:
 * Impact Time Resolution [h]
 * Impact Volume Resolution [MW]
 * Impact Penalty [€/Missing MW]
+* Case Study mFFR TenneT 2018, mFFR Elia 2020
 
 Made possible by:
 - Holger Willems
